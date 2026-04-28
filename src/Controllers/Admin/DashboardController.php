@@ -16,9 +16,7 @@ final class DashboardController
 
     public function index(Request $request): Response
     {
-        if (!$this->app->auth->check()) {
-            return Response::redirect('/admin/login');
-        }
+        if ($block = $this->app->auth->guard('viewer')) return $block;
         $repo = new EntryRepository($this->app->db);
         $forms = new FormSubmissionRepository($this->app->db);
 

@@ -1,0 +1,42 @@
+{% extends '@admin/layout.twig' %}
+{% set active = 'users' %}
+{% set title = 'Users' %}
+
+{% block content %}
+    <div class="topbar">
+        <div class="topbar-left">
+            <h1>Users</h1>
+            <p>{{ users|length }} {{ users|length == 1 ? 'user' : 'users' }}</p>
+        </div>
+        <a class="btn btn-primary" href="/admin/users/new">+ Invite user</a>
+    </div>
+
+    <div class="card">
+        <table class="entries">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Joined</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set me = current_user() %}
+                {% for u in users %}
+                    <tr>
+                        <td>
+                            <a href="/admin/users/{{ u.id }}">{{ u.name }}</a>
+                            {% if me and me.id == u.id %}<span class="muted"> (you)</span>{% endif %}
+                        </td>
+                        <td class="muted">{{ u.email }}</td>
+                        <td>
+                            <span class="pill pill-{{ u.role == 'admin' ? 'published' : 'draft' }}">{{ u.role }}</span>
+                        </td>
+                        <td class="muted">{{ u.createdAt|date('M j, Y') }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endblock %}

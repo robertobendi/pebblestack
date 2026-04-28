@@ -8,6 +8,14 @@ use Pebblestack\Models\User;
 
 final class Auth
 {
+    /**
+     * Role hierarchy. Higher rank includes everything below it.
+     * - viewer: read-only access to admin
+     * - editor: read + write content (entries, media, submissions)
+     * - admin:  everything, including users and site settings
+     */
+    public const ROLE_RANK = ['viewer' => 1, 'editor' => 2, 'admin' => 3];
+
     private ?User $cachedUser = null;
 
     public function __construct(
@@ -59,6 +67,42 @@ final class Auth
     public function check(): bool
     {
         return $this->user() !== null;
+    }
+
+    public function hasMinRole(string $minRole): bool
+    {
+        $u = $this->user();
+        if ($u === null) {
+            return false;
+        }
+        $userRank = self::ROLE_RANK[$u->role] ?? 0;
+        $needed = self::ROLE_RANK[$minRole] ?? 99;
+        return $userRank >= $needed;
+    }
+
+    /**
+     * Returns a redirect/forbidden Response if the current request can't proceed,
+     * or null if the user passes the role check. Use as:
+     *
+     *   if ($block = $this->app->auth->guard('editor')) return $block;
+     */
+    public function guard(string $minRole): ?Response
+    {
+        if (!$this->check()) {
+            return Response::redirect('/admin/login');
+        }
+        if (!$this->hasMinRole($minRole)) {
+            return Response::html(
+                '<!doctype html><meta charset="utf-8"><title>403 Forbidden</title>' .
+                '<style>body{font:15px system-ui;margin:4rem auto;max-width:480px;padding:0 1rem;color:#1c1917;text-align:center}' .
+                'a{color:#2563eb}</style>' .
+                '<h1>403 — Forbidden</h1>' .
+                '<p>Your account doesn’t have permission for that action.</p>' .
+                '<p><a href="/admin">← Back to admin</a></p>',
+                403
+            );
+        }
+        return null;
     }
 
     public static function hash(string $password): string

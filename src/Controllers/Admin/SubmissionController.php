@@ -20,9 +20,7 @@ final class SubmissionController
 
     public function index(Request $request): Response
     {
-        if (!$this->app->auth->check()) {
-            return Response::redirect('/admin/login');
-        }
+        if ($block = $this->guardForCurrentMethod()) return $block;
         $collection = $this->app->collections->get((string) $request->param('collection', ''));
         if ($collection === null || !$collection->isForm()) {
             return Response::notFound('Form not found');
@@ -38,9 +36,7 @@ final class SubmissionController
 
     public function show(Request $request): Response
     {
-        if (!$this->app->auth->check()) {
-            return Response::redirect('/admin/login');
-        }
+        if ($block = $this->guardForCurrentMethod()) return $block;
         $collection = $this->app->collections->get((string) $request->param('collection', ''));
         if ($collection === null || !$collection->isForm()) {
             return Response::notFound('Form not found');
@@ -60,9 +56,7 @@ final class SubmissionController
 
     public function destroy(Request $request): Response
     {
-        if (!$this->app->auth->check()) {
-            return Response::redirect('/admin/login');
-        }
+        if ($block = $this->guardForCurrentMethod()) return $block;
         $this->app->csrf->check($request);
         $collection = $this->app->collections->get((string) $request->param('collection', ''));
         if ($collection === null || !$collection->isForm()) {
@@ -80,5 +74,11 @@ final class SubmissionController
     {
         $row = $this->app->db->fetchOne("SELECT value FROM settings WHERE key = 'site_name'");
         return $row !== null ? (string) $row['value'] : 'Pebblestack';
+    }
+
+    private function guardForCurrentMethod(): ?Response
+    {
+        $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+        return $this->app->auth->guard($method === 'GET' ? 'viewer' : 'editor');
     }
 }

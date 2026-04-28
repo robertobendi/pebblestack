@@ -15,17 +15,15 @@ final class SettingsController
 
     public function show(Request $request): Response
     {
-        if (!$this->app->auth->check()) {
-            return Response::redirect('/admin/login');
-        }
+        if ($block = $this->app->auth->guard('viewer')) return $block;
         return $this->render([], []);
     }
 
     public function updateSite(Request $request): Response
     {
-        if (!$this->app->auth->check()) {
-            return Response::redirect('/admin/login');
-        }
+        // Site rename is admin-only; password change is allowed for any user
+        // and gated separately below.
+        if ($block = $this->app->auth->guard('admin')) return $block;
         $this->app->csrf->check($request);
 
         $name = trim((string) $request->input('site_name', ''));

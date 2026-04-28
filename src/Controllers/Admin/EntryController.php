@@ -21,9 +21,7 @@ final class EntryController
 
     public function index(Request $request): Response
     {
-        if (!$this->app->auth->check()) {
-            return Response::redirect('/admin/login');
-        }
+        if ($block = $this->guardForCurrentMethod()) return $block;
         $collection = $this->collection($request);
         if ($collection === null) {
             return Response::notFound('Unknown collection');
@@ -40,9 +38,7 @@ final class EntryController
 
     public function create(Request $request): Response
     {
-        if (!$this->app->auth->check()) {
-            return Response::redirect('/admin/login');
-        }
+        if ($block = $this->guardForCurrentMethod()) return $block;
         $collection = $this->collection($request);
         if ($collection === null) {
             return Response::notFound('Unknown collection');
@@ -56,9 +52,7 @@ final class EntryController
 
     public function store(Request $request): Response
     {
-        if (!$this->app->auth->check()) {
-            return Response::redirect('/admin/login');
-        }
+        if ($block = $this->guardForCurrentMethod()) return $block;
         $this->app->csrf->check($request);
         $collection = $this->collection($request);
         if ($collection === null) {
@@ -87,9 +81,7 @@ final class EntryController
 
     public function edit(Request $request): Response
     {
-        if (!$this->app->auth->check()) {
-            return Response::redirect('/admin/login');
-        }
+        if ($block = $this->guardForCurrentMethod()) return $block;
         $collection = $this->collection($request);
         if ($collection === null) {
             return Response::notFound('Unknown collection');
@@ -105,9 +97,7 @@ final class EntryController
 
     public function update(Request $request): Response
     {
-        if (!$this->app->auth->check()) {
-            return Response::redirect('/admin/login');
-        }
+        if ($block = $this->guardForCurrentMethod()) return $block;
         $this->app->csrf->check($request);
         $collection = $this->collection($request);
         if ($collection === null) {
@@ -141,9 +131,7 @@ final class EntryController
 
     public function destroy(Request $request): Response
     {
-        if (!$this->app->auth->check()) {
-            return Response::redirect('/admin/login');
-        }
+        if ($block = $this->guardForCurrentMethod()) return $block;
         $this->app->csrf->check($request);
         $collection = $this->collection($request);
         if ($collection === null) {
@@ -241,5 +229,16 @@ final class EntryController
     {
         $row = $this->app->db->fetchOne("SELECT value FROM settings WHERE key = 'site_name'");
         return $row !== null ? (string) $row['value'] : 'Pebblestack';
+    }
+
+    /**
+     * GET routes only need viewer; mutating routes require editor. We infer
+     * from the request method since each controller method maps cleanly:
+     * index/create/edit are GET, store/update/destroy are POST.
+     */
+    private function guardForCurrentMethod(): ?Response
+    {
+        $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+        return $this->app->auth->guard($method === 'GET' ? 'viewer' : 'editor');
     }
 }

@@ -20,9 +20,7 @@ final class MediaController
 
     public function index(Request $request): Response
     {
-        if (!$this->app->auth->check()) {
-            return Response::redirect('/admin/login');
-        }
+        if ($block = $this->guardForCurrentMethod()) return $block;
         return $this->renderIndex([]);
     }
 
@@ -48,9 +46,7 @@ final class MediaController
 
     public function edit(Request $request): Response
     {
-        if (!$this->app->auth->check()) {
-            return Response::redirect('/admin/login');
-        }
+        if ($block = $this->guardForCurrentMethod()) return $block;
         $media = $this->media->find((int) $request->param('id'));
         if ($media === null) {
             return Response::notFound('Media not found');
@@ -66,9 +62,7 @@ final class MediaController
 
     public function update(Request $request): Response
     {
-        if (!$this->app->auth->check()) {
-            return Response::redirect('/admin/login');
-        }
+        if ($block = $this->guardForCurrentMethod()) return $block;
         $this->app->csrf->check($request);
         $media = $this->media->find((int) $request->param('id'));
         if ($media === null) {
@@ -82,9 +76,7 @@ final class MediaController
 
     public function destroy(Request $request): Response
     {
-        if (!$this->app->auth->check()) {
-            return Response::redirect('/admin/login');
-        }
+        if ($block = $this->guardForCurrentMethod()) return $block;
         $this->app->csrf->check($request);
         $id = (int) $request->param('id');
         $this->media->delete($id);
@@ -110,5 +102,11 @@ final class MediaController
     {
         $row = $this->app->db->fetchOne("SELECT value FROM settings WHERE key = 'site_name'");
         return $row !== null ? (string) $row['value'] : 'Pebblestack';
+    }
+
+    private function guardForCurrentMethod(): ?Response
+    {
+        $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+        return $this->app->auth->guard($method === 'GET' ? 'viewer' : 'editor');
     }
 }

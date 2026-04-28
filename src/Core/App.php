@@ -10,6 +10,7 @@ use Pebblestack\Controllers\Admin\EntryController;
 use Pebblestack\Controllers\Admin\MediaController;
 use Pebblestack\Controllers\Admin\SettingsController;
 use Pebblestack\Controllers\Admin\SubmissionController;
+use Pebblestack\Controllers\Admin\UserController;
 use Pebblestack\Controllers\FormController;
 use Pebblestack\Controllers\InstallController;
 use Pebblestack\Controllers\PublicController;
@@ -105,6 +106,16 @@ final class App
         $r->get('/admin/settings', fn ($req) => $settings->show($req));
         $r->post('/admin/settings/site', fn ($req) => $settings->updateSite($req));
         $r->post('/admin/settings/password', fn ($req) => $settings->updatePassword($req));
+
+        // User management (admin-only — guarded inside controller).
+        $users = new UserController($this);
+        $r->get('/admin/users', fn ($req) => $users->index($req));
+        $r->get('/admin/users/new', fn ($req) => $users->create($req));
+        $r->post('/admin/users/new', fn ($req) => $users->store($req));
+        $r->get('/admin/users/{id}', fn ($req) => $users->edit($req));
+        $r->post('/admin/users/{id}', fn ($req) => $users->update($req));
+        $r->post('/admin/users/{id}/password', fn ($req) => $users->resetPassword($req));
+        $r->post('/admin/users/{id}/delete', fn ($req) => $users->destroy($req));
 
         $media = new MediaController($this);
         $r->get('/admin/media', fn ($req) => $media->index($req));

@@ -1,0 +1,85 @@
+{% extends '@admin/layout.twig' %}
+{% set active = 'users' %}
+{% set title = user_obj ? 'Edit user' : 'Invite user' %}
+
+{% block content %}
+    <div class="topbar">
+        <div class="topbar-left">
+            <h1>{{ title }}</h1>
+            <p><a href="/admin/users">← All users</a></p>
+        </div>
+    </div>
+
+    {% if errors|length > 0 %}
+        <div class="alert alert-error">
+            <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+        </div>
+    {% endif %}
+
+    <form method="post" action="{{ user_obj ? '/admin/users/' ~ user_obj.id : '/admin/users/new' }}">
+        {{ csrf_field()|raw }}
+        <div class="meta-grid">
+            <div class="card card-pad form-grid">
+                <div class="field">
+                    <label for="name" class="field-required">Name</label>
+                    <input id="name" name="name" type="text" value="{{ values.name }}" required>
+                </div>
+                <div class="field">
+                    <label for="email" class="field-required">Email</label>
+                    <input id="email" name="email" type="email" value="{{ values.email }}" required>
+                </div>
+                <div class="field">
+                    <label for="role" class="field-required">Role</label>
+                    <select id="role" name="role" required>
+                        <option value="admin"  {{ values.role == 'admin'  ? 'selected' : '' }}>Admin — full access</option>
+                        <option value="editor" {{ values.role == 'editor' ? 'selected' : '' }}>Editor — manages content + media</option>
+                        <option value="viewer" {{ values.role == 'viewer' ? 'selected' : '' }}>Viewer — read-only</option>
+                    </select>
+                </div>
+                {% if not user_obj %}
+                    <div class="field">
+                        <label for="password" class="field-required">Password</label>
+                        <input id="password" name="password" type="password" required minlength="8" autocomplete="new-password">
+                        <div class="help">At least 8 characters. Share this with the new user out-of-band.</div>
+                    </div>
+                {% endif %}
+            </div>
+
+            <aside class="card meta-card">
+                <div class="card-pad">
+                    <button type="submit" class="btn btn-primary" style="width:100%;">{{ user_obj ? 'Save changes' : 'Create user' }}</button>
+                </div>
+            </aside>
+        </div>
+    </form>
+
+    {% if user_obj %}
+        <div class="card" style="margin-top:1.5rem;">
+            <div class="card-head"><h2>Reset password</h2></div>
+            <div class="card-pad">
+                <form method="post" action="/admin/users/{{ user_obj.id }}/password" autocomplete="off">
+                    {{ csrf_field()|raw }}
+                    <div class="field">
+                        <label for="reset-password" class="field-required">New password</label>
+                        <input id="reset-password" name="password" type="password" required minlength="8" autocomplete="new-password">
+                    </div>
+                    <button type="submit" class="btn">Reset password</button>
+                </form>
+            </div>
+        </div>
+
+        {% set me = current_user() %}
+        {% if me and me.id != user_obj.id %}
+            <div class="card" style="margin-top:1.5rem;">
+                <div class="card-head"><h2>Danger zone</h2></div>
+                <div class="card-pad">
+                    <form method="post" action="/admin/users/{{ user_obj.id }}/delete"
+                          onsubmit="return confirm('Delete {{ user_obj.name }}? This cannot be undone.');">
+                        {{ csrf_field()|raw }}
+                        <button type="submit" class="btn btn-danger">Delete user</button>
+                    </form>
+                </div>
+            </div>
+        {% endif %}
+    {% endif %}
+{% endblock %}
