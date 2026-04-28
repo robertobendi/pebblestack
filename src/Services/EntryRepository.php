@@ -63,6 +63,29 @@ final class EntryRepository
         return (int) ($row['n'] ?? 0);
     }
 
+    /**
+     * Title-substring search inside the entry data JSON. SQLite's LIKE on
+     * the whole JSON blob is fast enough for the hundreds-of-entries scale
+     * Pebblestack targets; full-text indexing would be over-engineering.
+     *
+     * @return list<\Pebblestack\Models\Entry>
+     */
+    public function search(string $collection, string $titleField, string $query, string $orderBy = 'updated_at DESC', int $limit = 100): array
+    {
+        $orderBy = $this->safeOrderBy($orderBy);
+        // Match the title field's value within the JSON. We look for "fieldname":"...query..."
+        // which is precise enough to avoid false hits on other fields' values.
+        $needle = '%"' . str_replace(['\\', '"', '%', '_'], ['\\\\', '\\"', '\\%', '\\_'], $titleField) . '":%' .
+                  str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $query) . '%';
+        $rows = $this->db->fetchAll(
+            "SELECT * FROM entries
+             WHERE collection = :c AND data LIKE :q ESCAPE '\\'
+             ORDER BY {$orderBy} LIMIT :l",
+            ['c' => $collection, 'q' => $needle, 'l' => $limit]
+        );
+        return array_map(fn ($r) => \Pebblestack\Models\Entry::fromRow($r), $rows);
+    }
+
     /** @param array<string,mixed> $data */
     public function create(string $collection, string $slug, string $status, array $data, ?int $publishAt): int
     {

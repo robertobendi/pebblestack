@@ -29,10 +29,21 @@ final class EntryController
         if ($collection === null) {
             return Response::notFound('Unknown collection');
         }
-        $entries = $this->repo->listByCollection($collection->name, $collection->orderBy(), 200);
+        $query = trim((string) $request->input('q', ''));
+        if ($query !== '') {
+            $entries = $this->repo->search(
+                $collection->name,
+                $collection->titleField(),
+                $query,
+                $collection->orderBy()
+            );
+        } else {
+            $entries = $this->repo->listByCollection($collection->name, $collection->orderBy(), 200);
+        }
         $body = $this->app->view->render('@admin/entries/index.twig', [
             'collection'  => $collection,
             'entries'     => $entries,
+            'query'       => $query,
             'collections' => $this->app->collections->list(),
             'site_name'   => $this->siteName(),
         ]);

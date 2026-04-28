@@ -6,19 +6,34 @@
     <div class="topbar">
         <div class="topbar-left">
             <h1>{{ collection.label() }}</h1>
-            <p>{{ entries|length }} {{ entries|length == 1 ? collection.labelSingular()|lower : collection.label()|lower }}</p>
+            <p>
+                {{ entries|length }} {{ entries|length == 1 ? collection.labelSingular()|lower : collection.label()|lower }}
+                {% if query|default('') != '' %} matching “{{ query }}”{% endif %}
+            </p>
         </div>
-        <a class="btn btn-primary" href="/admin/collections/{{ collection.name }}/new">+ New {{ collection.labelSingular()|lower }}</a>
+        <div class="button-row">
+            <form method="get" action="/admin/collections/{{ collection.name }}" style="display:flex;gap:.5rem;">
+                <input name="q" type="search" placeholder="Search {{ collection.label()|lower }}…" value="{{ query|default('') }}"
+                       style="padding:.5rem .625rem;border-radius:6px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font:inherit;min-width:220px;">
+                {% if query|default('') != '' %}<a class="btn btn-ghost" href="/admin/collections/{{ collection.name }}">Clear</a>{% endif %}
+            </form>
+            <a class="btn btn-primary" href="/admin/collections/{{ collection.name }}/new">+ New {{ collection.labelSingular()|lower }}</a>
+        </div>
     </div>
 
     <div class="card">
         {% if entries|length == 0 %}
             <div class="empty">
-                <h2>No {{ collection.label()|lower }} yet.</h2>
-                <p>Create the first one to get started.</p>
-                <p style="margin-top: 1rem;">
-                    <a class="btn btn-primary" href="/admin/collections/{{ collection.name }}/new">+ New {{ collection.labelSingular()|lower }}</a>
-                </p>
+                {% if query|default('') != '' %}
+                    <h2>No matches for “{{ query }}”.</h2>
+                    <p><a href="/admin/collections/{{ collection.name }}">← Clear search</a></p>
+                {% else %}
+                    <h2>No {{ collection.label()|lower }} yet.</h2>
+                    <p>Create the first one to get started.</p>
+                    <p style="margin-top: 1rem;">
+                        <a class="btn btn-primary" href="/admin/collections/{{ collection.name }}/new">+ New {{ collection.labelSingular()|lower }}</a>
+                    </p>
+                {% endif %}
             </div>
         {% else %}
             <table class="entries">
