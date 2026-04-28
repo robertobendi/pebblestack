@@ -233,6 +233,13 @@
             </nav>
         </div>
         {% endif %}
+        <div class="nav-section">
+            <div class="nav-label">System</div>
+            <nav class="nav">
+                <a href="/admin/media" class="{{ active == 'media' ? 'active' : '' }}">Media</a>
+                <a href="/admin/settings" class="{{ active == 'settings' ? 'active' : '' }}">Settings</a>
+            </nav>
+        </div>
         <div class="nav-foot">
             {% set u = current_user() %}
             {% if u %}

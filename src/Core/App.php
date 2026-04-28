@@ -7,10 +7,14 @@ namespace Pebblestack\Core;
 use Pebblestack\Controllers\Admin\AuthController;
 use Pebblestack\Controllers\Admin\DashboardController;
 use Pebblestack\Controllers\Admin\EntryController;
+use Pebblestack\Controllers\Admin\MediaController;
+use Pebblestack\Controllers\Admin\SettingsController;
 use Pebblestack\Controllers\InstallController;
 use Pebblestack\Controllers\PublicController;
+use Pebblestack\Controllers\SitemapController;
 use Pebblestack\Services\CollectionRegistry;
 use Pebblestack\Services\Installer;
+use Pebblestack\Services\Migrator;
 
 /**
  * Builds the dependency graph and dispatches the request. Single instance
@@ -64,6 +68,12 @@ final class App
             if (!$this->installer->isInstalled() && !str_starts_with($request->path(), '/install')) {
                 return Response::redirect('/install');
             }
+            // Apply any new migrations on boot. Idempotent; ~1ms when up-to-date.
+            // This is how shared-hosted instances pick up upgrades — the user
+            // overwrites files, the next request migrates the DB.
+            if ($this->installer->isInstalled()) {
+                (new Migrator($this->db, $this->rootDir . '/data/migrations'))->run();
+            }
             return $this->router->dispatch($request);
         } catch (\Throwable $e) {
             return $this->renderError($e);
@@ -89,6 +99,18 @@ final class App
         $dash = new DashboardController($this);
         $r->get('/admin', fn ($req) => $dash->index($req));
 
+        $settings = new SettingsController($this);
+        $r->get('/admin/settings', fn ($req) => $settings->show($req));
+        $r->post('/admin/settings/site', fn ($req) => $settings->updateSite($req));
+        $r->post('/admin/settings/password', fn ($req) => $settings->updatePassword($req));
+
+        $media = new MediaController($this);
+        $r->get('/admin/media', fn ($req) => $media->index($req));
+        $r->post('/admin/media', fn ($req) => $media->upload($req));
+        $r->get('/admin/media/{id}', fn ($req) => $media->edit($req));
+        $r->post('/admin/media/{id}', fn ($req) => $media->update($req));
+        $r->post('/admin/media/{id}/delete', fn ($req) => $media->destroy($req));
+
         $entries = new EntryController($this);
         $r->get('/admin/collections/{collection}', fn ($req) => $entries->index($req));
         $r->get('/admin/collections/{collection}/new', fn ($req) => $entries->create($req));
@@ -96,6 +118,11 @@ final class App
         $r->get('/admin/collections/{collection}/{id}', fn ($req) => $entries->edit($req));
         $r->post('/admin/collections/{collection}/{id}', fn ($req) => $entries->update($req));
         $r->post('/admin/collections/{collection}/{id}/delete', fn ($req) => $entries->destroy($req));
+
+        // SEO endpoints — registered before the catch-all so they always win.
+        $sitemap = new SitemapController($this);
+        $r->get('/sitemap.xml', fn ($req) => $sitemap->sitemap($req));
+        $r->get('/robots.txt', fn ($req) => $sitemap->robots($req));
 
         // Public site (catch-all goes last).
         $public = new PublicController($this);

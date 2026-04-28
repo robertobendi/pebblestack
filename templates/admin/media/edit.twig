@@ -1,0 +1,62 @@
+{% extends '@admin/layout.twig' %}
+{% set active = 'media' %}
+{% set title = media.originalName %}
+
+{% block content %}
+    <div class="topbar">
+        <div class="topbar-left">
+            <h1>{{ media.originalName }}</h1>
+            <p><a href="/admin/media">← All media</a></p>
+        </div>
+    </div>
+
+    <div class="meta-grid">
+        <div class="card card-pad">
+            {% if media.isImage() %}
+                <img src="{{ media.path }}" alt="{{ media.alt|default('') }}"
+                     style="max-width:100%;height:auto;border-radius:6px;border:1px solid var(--border);">
+            {% else %}
+                <p><a class="btn" href="{{ media.path }}" target="_blank" rel="noopener">Open file →</a></p>
+            {% endif %}
+
+            <h3 style="margin-top:1.5rem;">Markdown snippet</h3>
+            <pre style="background:#f5f5f4;color:var(--text);padding:.75rem 1rem;border-radius:6px;font-size:.875rem;overflow-x:auto;"><code>{% if media.isImage() %}![{{ media.alt|default(media.originalName) }}]({{ media.path }}){% else %}[{{ media.originalName }}]({{ media.path }}){% endif %}</code></pre>
+
+            <h3 style="margin-top:1.5rem;">URL</h3>
+            <pre style="background:#f5f5f4;color:var(--text);padding:.75rem 1rem;border-radius:6px;font-size:.875rem;overflow-x:auto;"><code>{{ media.path }}</code></pre>
+        </div>
+
+        <aside class="card">
+            <div class="card-pad">
+                <form method="post" action="/admin/media/{{ media.id }}" class="form-grid">
+                    {{ csrf_field()|raw }}
+                    {% if media.isImage() %}
+                        <div class="field">
+                            <label for="alt">Alt text</label>
+                            <input id="alt" name="alt" type="text" value="{{ media.alt|default('') }}">
+                            <div class="help">Describes the image for screen readers and SEO.</div>
+                        </div>
+                    {% endif %}
+                    <div class="button-row">
+                        <button type="submit" class="btn btn-primary">Save</button>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card-pad" style="border-top:1px solid var(--border);font-size:.875rem;">
+                <div><strong>Type:</strong> {{ media.mimeType }}</div>
+                <div><strong>Size:</strong> {{ media.humanSize() }}</div>
+                {% if media.width %}<div><strong>Dimensions:</strong> {{ media.width }} × {{ media.height }}</div>{% endif %}
+                <div><strong>Uploaded:</strong> {{ media.createdAt|date('M j, Y') }}</div>
+            </div>
+
+            <div class="card-pad" style="border-top:1px solid var(--border);">
+                <form method="post" action="/admin/media/{{ media.id }}/delete"
+                      onsubmit="return confirm('Delete {{ media.originalName }}? This will also remove it from disk.');">
+                    {{ csrf_field()|raw }}
+                    <button type="submit" class="btn btn-danger">Delete file</button>
+                </form>
+            </div>
+        </aside>
+    </div>
+{% endblock %}

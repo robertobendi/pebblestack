@@ -13,6 +13,9 @@ WordPress runs on the cheap $3 shared hosts you find on Hostinger, Namecheap, et
 - **Typed content collections.** Define `pages`, `posts`, or whatever you need in `config/collections.php`. No "Custom Post Types UI" plugin.
 - **Markdown by default.** No block editor. Write content, render it.
 - **Auto-escaped templates.** Twig means you don't ship XSS by accident.
+- **Built-in media library.** Upload images and PDFs, get a markdown snippet you can paste into any post.
+- **SEO baked in.** `/sitemap.xml` and `/robots.txt` are served automatically.
+- **Auto-migrating.** Drop in a new release, refresh the page, and any pending schema migrations run on the next request.
 
 ## Requirements
 
