@@ -8,6 +8,7 @@ use Pebblestack\Core\App;
 use Pebblestack\Core\Request;
 use Pebblestack\Core\Response;
 use Pebblestack\Services\EntryRepository;
+use Pebblestack\Services\MetricsService;
 
 final class PublicController
 {
@@ -20,6 +21,7 @@ final class PublicController
 
     public function home(Request $request): Response
     {
+        $this->track($request);
         // If a Page has slug "home", render it as the homepage. Otherwise
         // fall back to the theme's home.twig with a list of recent posts.
         $home = $this->repo->findBySlug('pages', 'home');
@@ -35,6 +37,7 @@ final class PublicController
 
     public function blogIndex(Request $request): Response
     {
+        $this->track($request);
         $collection = $this->app->collections->get('posts');
         if ($collection === null) {
             return Response::notFound();
@@ -65,7 +68,18 @@ final class PublicController
         if ($entry === null || !$entry->isPublished()) {
             return $this->renderNotFound();
         }
+        $this->track($request);
         return $this->renderEntry($entry, $collectionName);
+    }
+
+    private function track(Request $request): void
+    {
+        // Best-effort — never let metrics break the page render.
+        try {
+            (new MetricsService($this->app->db))->recordView($request->path());
+        } catch (\Throwable) {
+            // intentionally swallowed
+        }
     }
 
     private function renderEntry(\Pebblestack\Models\Entry $entry, string $collectionName): Response

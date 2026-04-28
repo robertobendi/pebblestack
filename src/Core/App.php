@@ -8,6 +8,7 @@ use Pebblestack\Controllers\Admin\AuthController;
 use Pebblestack\Controllers\Admin\DashboardController;
 use Pebblestack\Controllers\Admin\EntryController;
 use Pebblestack\Controllers\Admin\MediaController;
+use Pebblestack\Controllers\Admin\MetricsController;
 use Pebblestack\Controllers\Admin\RevisionController;
 use Pebblestack\Controllers\Admin\SettingsController;
 use Pebblestack\Controllers\Admin\SubmissionController;
@@ -117,6 +118,9 @@ final class App
         $r->post('/admin/users/{id}', fn ($req) => $users->update($req));
         $r->post('/admin/users/{id}/password', fn ($req) => $users->resetPassword($req));
         $r->post('/admin/users/{id}/delete', fn ($req) => $users->destroy($req));
+
+        $metrics = new MetricsController($this);
+        $r->get('/admin/metrics', fn ($req) => $metrics->index($req));
 
         $media = new MediaController($this);
         $r->get('/admin/media', fn ($req) => $media->index($req));

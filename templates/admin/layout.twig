@@ -237,6 +237,7 @@
             <div class="nav-label">System</div>
             <nav class="nav">
                 <a href="/admin/media" class="{{ active == 'media' ? 'active' : '' }}">Media</a>
+                <a href="/admin/metrics" class="{{ active == 'metrics' ? 'active' : '' }}">Metrics</a>
                 {% set me = current_user() %}
                 {% if me and me.role == 'admin' %}
                     <a href="/admin/users" class="{{ active == 'users' ? 'active' : '' }}">Users</a>

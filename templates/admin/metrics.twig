@@ -1,0 +1,75 @@
+{% extends '@admin/layout.twig' %}
+{% set active = 'metrics' %}
+{% set title = 'Metrics' %}
+
+{% block content %}
+    <div class="topbar">
+        <div class="topbar-left">
+            <h1>Metrics</h1>
+            <p>Server-side page view counts. No cookies, no IPs, no JavaScript trackers.</p>
+        </div>
+    </div>
+
+    <div class="stat-grid">
+        <div class="card stat">
+            <div class="stat-label">Views · last 30 days</div>
+            <div class="stat-value">{{ total_30d|number_format }}</div>
+        </div>
+        <div class="card stat">
+            <div class="stat-label">Views · last 7 days</div>
+            <div class="stat-value">{{ total_7d|number_format }}</div>
+        </div>
+    </div>
+
+    {# Inline SVG bar chart. Avoids any JS dependency. #}
+    {% set max = 1 %}
+    {% for d in daily %}{% set max = d.count > max ? d.count : max %}{% endfor %}
+    <div class="card">
+        <div class="card-head"><h2>Last 30 days</h2></div>
+        <div class="card-pad">
+            <svg viewBox="0 0 600 160" preserveAspectRatio="none" style="width:100%;height:160px;">
+                {% set bar_w = 600 / daily|length %}
+                {% for d in daily %}
+                    {% set h = (d.count / max) * 140 %}
+                    <rect x="{{ loop.index0 * bar_w + 1 }}" y="{{ 150 - h }}"
+                          width="{{ bar_w - 2 }}" height="{{ h }}"
+                          fill="var(--accent)" rx="2">
+                        <title>{{ d.day|date('M j') }}: {{ d.count }} views</title>
+                    </rect>
+                {% endfor %}
+                <line x1="0" y1="150" x2="600" y2="150" stroke="var(--border)" />
+            </svg>
+            <div style="display:flex;justify-content:space-between;color:var(--muted);font-size:.75rem;margin-top:.25rem;">
+                <span>{{ daily|first.day|date('M j') }}</span>
+                <span>{{ daily|last.day|date('M j') }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-head"><h2>Top pages</h2></div>
+        {% if top_paths|length == 0 %}
+            <div class="empty">
+                <h2>No views yet.</h2>
+                <p>Pageviews are tracked server-side as visitors hit your public pages.</p>
+            </div>
+        {% else %}
+            <table class="entries">
+                <thead>
+                    <tr>
+                        <th>Path</th>
+                        <th style="text-align:right;">Views (30d)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in top_paths %}
+                        <tr>
+                            <td><a href="{{ p.path }}" target="_blank" rel="noopener">{{ p.path }}</a></td>
+                            <td class="muted" style="text-align:right;">{{ p.count|number_format }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </div>
+{% endblock %}
