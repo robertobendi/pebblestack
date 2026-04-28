@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Install · Pebblestack</title>
+    <style>
+        body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+               background: #fafaf9; color: #1c1917; min-height: 100vh; display: grid; place-items: center; padding: 2rem 1rem; }
+        .wrap { max-width: 520px; width: 100%; }
+        .brand { display: flex; align-items: center; gap: .625rem; margin-bottom: 1.5rem; justify-content: center; }
+        .brand-mark { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #44403c, #1c1917); position: relative; }
+        .brand-mark::after { content:''; position: absolute; inset: 8px; border-radius: 5px; background: linear-gradient(135deg, #fafaf9, #d6d3d1); }
+        .brand-name { font-weight: 600; font-size: 1.125rem; letter-spacing: -.01em; }
+        .card { background: #fff; border: 1px solid #e7e5e4; border-radius: 12px;
+                box-shadow: 0 1px 2px rgba(28,25,23,.04), 0 1px 3px rgba(28,25,23,.06); padding: 2rem; }
+        h1 { margin: 0 0 .25rem; font-size: 1.5rem; letter-spacing: -.01em; }
+        p.lede { margin: 0 0 1.5rem; color: #78716c; }
+        .checks { list-style: none; padding: 0; margin: 0 0 1.5rem; border: 1px solid #e7e5e4; border-radius: 8px; overflow: hidden; }
+        .checks li { display: flex; align-items: center; gap: .75rem; padding: .625rem .875rem; border-bottom: 1px solid #e7e5e4; font-size: .875rem; }
+        .checks li:last-child { border-bottom: 0; }
+        .check-mark { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 999px; font-size: .75rem; font-weight: 700; flex-shrink: 0; }
+        .check-ok { background: #dcfce7; color: #16a34a; }
+        .check-bad { background: #fee2e2; color: #dc2626; }
+        .check-detail { color: #78716c; font-size: .8125rem; margin-left: auto; }
+        .field { margin-bottom: 1rem; }
+        .field label { display: block; font-weight: 500; margin-bottom: .25rem; font-size: .875rem; }
+        .field input { width: 100%; padding: .5rem .625rem; font: inherit; border-radius: 6px; border: 1px solid #d6d3d1; background: #fff; }
+        .field input:focus { outline: 0; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.2); }
+        .row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; }
+        @media (max-width: 480px) { .row { grid-template-columns: 1fr; } }
+        .btn-primary { display: inline-block; width: 100%; padding: .625rem 1rem; background: #2563eb; color: #fff; border: 0; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: .9375rem; }
+        .btn-primary:hover { background: #1d4ed8; }
+        .btn-primary:disabled { background: #a8a29e; cursor: not-allowed; }
+        .alert-error { background: #fee2e2; color: #dc2626; padding: .75rem 1rem; border-radius: 8px; margin-bottom: 1rem; font-size: .875rem; }
+        .alert-error ul { margin: .25rem 0 0; padding-left: 1.25rem; }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-name">Pebblestack</span>
+    </div>
+    <div class="card">
+        <h1>Welcome.</h1>
+        <p class="lede">Two minutes to set up your site. No database to provision.</p>
+
+        <ul class="checks" aria-label="System checks">
+            {% for c in checks %}
+                <li>
+                    <span class="check-mark {{ c.ok ? 'check-ok' : 'check-bad' }}">{{ c.ok ? '✓' : '!' }}</span>
+                    <span>{{ c.label }}</span>
+                    <span class="check-detail">{{ c.detail }}</span>
+                </li>
+            {% endfor %}
+        </ul>
+
+        {% if errors|length > 0 %}
+            <div class="alert-error">
+                <strong>Couldn’t install:</strong>
+                <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+            </div>
+        {% endif %}
+
+        <form method="post" action="/install">
+            <div class="field">
+                <label for="site_name">Site name</label>
+                <input id="site_name" name="site_name" type="text" required value="{{ old.site_name }}" placeholder="My Site">
+            </div>
+            <div class="row">
+                <div class="field">
+                    <label for="name">Your name</label>
+                    <input id="name" name="name" type="text" required value="{{ old.name }}">
+                </div>
+                <div class="field">
+                    <label for="email">Email</label>
+                    <input id="email" name="email" type="email" required value="{{ old.email }}">
+                </div>
+            </div>
+            <div class="row">
+                <div class="field">
+                    <label for="password">Password</label>
+                    <input id="password" name="password" type="password" required minlength="8">
+                </div>
+                <div class="field">
+                    <label for="password_confirm">Confirm password</label>
+                    <input id="password_confirm" name="password_confirm" type="password" required minlength="8">
+                </div>
+            </div>
+            <button type="submit" class="btn-primary" {{ ready ? '' : 'disabled' }}>
+                {{ ready ? 'Install Pebblestack' : 'Fix checks above' }}
+            </button>
+        </form>
+    </div>
+</div>
+</body>
+</html>

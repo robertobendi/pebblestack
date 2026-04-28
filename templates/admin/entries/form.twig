@@ -1,0 +1,68 @@
+{% extends '@admin/layout.twig' %}
+{% set active = 'collection:' ~ collection.name %}
+{% set title = entry_id ? 'Edit ' ~ collection.labelSingular() : 'New ' ~ collection.labelSingular() %}
+
+{% block content %}
+    <div class="topbar">
+        <div class="topbar-left">
+            <h1>{{ title }}</h1>
+            <p><a href="/admin/collections/{{ collection.name }}">← Back to {{ collection.label()|lower }}</a></p>
+        </div>
+    </div>
+
+    {% if errors|length > 0 %}
+        <div class="alert alert-error">
+            <strong>Please fix the following:</strong>
+            <ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+        </div>
+    {% endif %}
+
+    <form method="post" action="{{ entry_id ? '/admin/collections/' ~ collection.name ~ '/' ~ entry_id : '/admin/collections/' ~ collection.name ~ '/new' }}">
+        {{ csrf_field()|raw }}
+        <div class="meta-grid">
+            <div class="card card-pad form-grid">
+                {% for key, field in collection.fields() %}
+                    {% include '@admin/fields/' ~ field.type() ~ '.twig' with {
+                        'field': field,
+                        'value': values[key]|default(''),
+                        'name': key,
+                    } only %}
+                {% endfor %}
+            </div>
+
+            <aside class="card meta-card">
+                <div class="card-pad form-grid">
+                    <div class="field">
+                        <label for="_status">Status</label>
+                        <select id="_status" name="_status">
+                            <option value="draft" {{ status == 'draft' ? 'selected' : '' }}>Draft</option>
+                            <option value="published" {{ status == 'published' ? 'selected' : '' }}>Published</option>
+                        </select>
+                        <div class="help">Drafts are hidden from the public site.</div>
+                    </div>
+                    <div class="field">
+                        <label for="_publish_at">Publish at</label>
+                        <input id="_publish_at" name="_publish_at" type="datetime-local"
+                               value="{{ publish_at ? publish_at|date('Y-m-d\\TH:i') : '' }}">
+                        <div class="help">Optional. If set in the future, hidden until then.</div>
+                    </div>
+                </div>
+                <div class="card-pad" style="border-top: 1px solid var(--border); display: flex; gap: .5rem; flex-wrap: wrap;">
+                    <button type="submit" class="btn btn-primary">{{ entry_id ? 'Save changes' : 'Create' }}</button>
+                    {% if entry_id %}
+                        <button type="submit" form="delete-form" class="btn btn-danger"
+                                onclick="return confirm('Delete this {{ collection.labelSingular()|lower }}? This cannot be undone.')">
+                            Delete
+                        </button>
+                    {% endif %}
+                </div>
+            </aside>
+        </div>
+    </form>
+
+    {% if entry_id %}
+        <form id="delete-form" method="post" action="/admin/collections/{{ collection.name }}/{{ entry_id }}/delete">
+            {{ csrf_field()|raw }}
+        </form>
+    {% endif %}
+{% endblock %}

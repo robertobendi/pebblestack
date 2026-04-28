@@ -1,0 +1,7 @@
+<div class="field">
+    <div class="field-checkbox">
+        <input id="f-{{ name }}" name="{{ name }}" type="checkbox" value="1" {{ value ? 'checked' : '' }}>
+        <label for="f-{{ name }}">{{ field.label() }}</label>
+    </div>
+    {% if field.help() %}<div class="help">{{ field.help() }}</div>{% endif %}
+</div>

@@ -1,0 +1,21 @@
+{% extends '@theme/layout.twig' %}
+
+{% block content %}
+<div class="wrap">
+    <h1>{{ site.name }}</h1>
+    <p class="lede">Welcome. This is your new Pebblestack site. Edit this page in the admin to make it your own — or create a Page with the slug <code>home</code> to replace this entirely.</p>
+
+    {% if recent_posts|length > 0 %}
+        <h2>Latest writing</h2>
+        {% for post in recent_posts %}
+            <a class="post-card" href="/blog/{{ post.slug }}">
+                <h2>{{ post.field('title', '(untitled)') }}</h2>
+                <div class="date">{{ (post.publishAt ?? post.createdAt)|date('F j, Y') }}</div>
+                {% if post.field('excerpt') %}
+                    <p>{{ post.field('excerpt') }}</p>
+                {% endif %}
+            </a>
+        {% endfor %}
+    {% endif %}
+</div>
+{% endblock %}

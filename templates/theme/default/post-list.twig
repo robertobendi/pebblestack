@@ -1,0 +1,24 @@
+{% extends '@theme/layout.twig' %}
+
+{% block title %}Blog · {{ site.name }}{% endblock %}
+
+{% block content %}
+<div class="wrap">
+    <h1>Blog</h1>
+    {% if posts|length == 0 %}
+        <div class="empty-state">
+            <p>No posts yet — check back soon.</p>
+        </div>
+    {% else %}
+        {% for post in posts %}
+            <a class="post-card" href="/blog/{{ post.slug }}">
+                <h2>{{ post.field('title', '(untitled)') }}</h2>
+                <div class="date">{{ (post.publishAt ?? post.createdAt)|date('F j, Y') }}</div>
+                {% if post.field('excerpt') %}
+                    <p>{{ post.field('excerpt') }}</p>
+                {% endif %}
+            </a>
+        {% endfor %}
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends '@theme/layout.twig' %}
+{% set meta_description = entry.field('excerpt') %}
+
+{% block title %}{{ entry.field('title') }} · {{ site.name }}{% endblock %}
+
+{% block content %}
+<article class="wrap">
+    <h1>{{ entry.field('title') }}</h1>
+    <p class="meta">
+        {{ (entry.publishAt ?? entry.createdAt)|date('F j, Y') }}
+        {% if entry.field('author') %} · by {{ entry.field('author') }}{% endif %}
+    </p>
+    {% if entry.field('excerpt') %}
+        <p class="lede">{{ entry.field('excerpt') }}</p>
+    {% endif %}
+    <div class="article-body">
+        {{ entry.field('body')|markdown }}
+    </div>
+    <hr>
+    <p><a href="/blog">← All posts</a></p>
+</article>
+{% endblock %}

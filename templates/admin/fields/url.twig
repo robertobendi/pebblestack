@@ -1,0 +1,5 @@
+<div class="field">
+    <label for="f-{{ name }}" class="{{ field.required() ? 'field-required' : '' }}">{{ field.label() }}</label>
+    <input id="f-{{ name }}" name="{{ name }}" type="url" value="{{ value }}" {{ field.required() ? 'required' : '' }}>
+    {% if field.help() %}<div class="help">{{ field.help() }}</div>{% endif %}
+</div>

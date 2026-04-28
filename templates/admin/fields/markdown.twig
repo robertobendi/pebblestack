@@ -1,0 +1,5 @@
+<div class="field">
+    <label for="f-{{ name }}" class="{{ field.required() ? 'field-required' : '' }}">{{ field.label() }}</label>
+    <textarea id="f-{{ name }}" name="{{ name }}" class="markdown" rows="16" {{ field.required() ? 'required' : '' }}>{{ value }}</textarea>
+    {% if field.help() %}<div class="help">{{ field.help() }}</div>{% endif %}
+</div>

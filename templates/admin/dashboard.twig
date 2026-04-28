@@ -1,0 +1,60 @@
+{% extends '@admin/layout.twig' %}
+{% set active = 'dashboard' %}
+{% set title = 'Dashboard' %}
+
+{% block content %}
+    <div class="topbar">
+        <div class="topbar-left">
+            <h1>Dashboard</h1>
+            <p>Quick overview of your content.</p>
+        </div>
+        <a class="btn" href="/" target="_blank" rel="noopener">View site →</a>
+    </div>
+
+    <div class="stat-grid">
+        {% for s in stats %}
+            <div class="card stat">
+                <div class="stat-label">{{ s.collection.label() }}</div>
+                <div class="stat-value">{{ s.count }}</div>
+                <a class="stat-link" href="/admin/collections/{{ s.collection.name }}">Manage →</a>
+            </div>
+        {% endfor %}
+    </div>
+
+    {% for s in stats %}
+        <div class="card">
+            <div class="card-head">
+                <h2>Recent {{ s.collection.label()|lower }}</h2>
+                <a class="btn btn-primary" href="/admin/collections/{{ s.collection.name }}/new">+ New {{ s.collection.labelSingular()|lower }}</a>
+            </div>
+            {% if s.recent|length == 0 %}
+                <div class="empty">
+                    <h2>Nothing here yet.</h2>
+                    <p>Create your first {{ s.collection.labelSingular()|lower }} to get started.</p>
+                </div>
+            {% else %}
+                <table class="entries">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Status</th>
+                            <th>Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in s.recent %}
+                            {% set tf = s.collection.titleField() %}
+                            <tr>
+                                <td><a href="/admin/collections/{{ s.collection.name }}/{{ e.id }}">{{ e.field(tf, '(untitled)') }}</a></td>
+                                <td>
+                                    <span class="pill pill-{{ e.status }}">{{ e.status }}</span>
+                                </td>
+                                <td class="muted">{{ e.updatedAt|date('M j, Y') }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </div>
+    {% endfor %}
+{% endblock %}

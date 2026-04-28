@@ -1,0 +1,14 @@
+/vendor/
+/composer.lock
+/data/*.sqlite
+/data/*.sqlite-journal
+/data/*.sqlite-wal
+/data/*.sqlite-shm
+/data/installed.lock
+/uploads/*
+!/uploads/.gitkeep
+/cache/
+.DS_Store
+.idea/
+.vscode/
+*.log

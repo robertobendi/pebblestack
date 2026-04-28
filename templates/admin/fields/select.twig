@@ -1,0 +1,11 @@
+<div class="field">
+    <label for="f-{{ name }}" class="{{ field.required() ? 'field-required' : '' }}">{{ field.label() }}</label>
+    <select id="f-{{ name }}" name="{{ name }}" {{ field.required() ? 'required' : '' }}>
+        {% if not field.required() %}<option value="">— None —</option>{% endif %}
+        {% for k, label in field.options() %}
+            {% set optValue = (field.options()|keys[0] is same as(0)) ? label : k %}
+            <option value="{{ optValue }}" {{ value == optValue ? 'selected' : '' }}>{{ label }}</option>
+        {% endfor %}
+    </select>
+    {% if field.help() %}<div class="help">{{ field.help() }}</div>{% endif %}
+</div>

@@ -1,0 +1,47 @@
+{% extends '@admin/layout.twig' %}
+{% set active = 'collection:' ~ collection.name %}
+{% set title = collection.label() %}
+
+{% block content %}
+    <div class="topbar">
+        <div class="topbar-left">
+            <h1>{{ collection.label() }}</h1>
+            <p>{{ entries|length }} {{ entries|length == 1 ? collection.labelSingular()|lower : collection.label()|lower }}</p>
+        </div>
+        <a class="btn btn-primary" href="/admin/collections/{{ collection.name }}/new">+ New {{ collection.labelSingular()|lower }}</a>
+    </div>
+
+    <div class="card">
+        {% if entries|length == 0 %}
+            <div class="empty">
+                <h2>No {{ collection.label()|lower }} yet.</h2>
+                <p>Create the first one to get started.</p>
+                <p style="margin-top: 1rem;">
+                    <a class="btn btn-primary" href="/admin/collections/{{ collection.name }}/new">+ New {{ collection.labelSingular()|lower }}</a>
+                </p>
+            </div>
+        {% else %}
+            <table class="entries">
+                <thead>
+                    <tr>
+                        <th>{{ collection.fields()[collection.titleField()].label() }}</th>
+                        <th>Slug</th>
+                        <th>Status</th>
+                        <th>Updated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in entries %}
+                        {% set tf = collection.titleField() %}
+                        <tr>
+                            <td><a href="/admin/collections/{{ collection.name }}/{{ e.id }}">{{ e.field(tf, '(untitled)') }}</a></td>
+                            <td class="muted">/{{ e.slug }}</td>
+                            <td><span class="pill pill-{{ e.status }}">{{ e.status }}</span></td>
+                            <td class="muted">{{ e.updatedAt|date('M j, Y') }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </div>
+{% endblock %}
