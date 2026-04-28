@@ -39,6 +39,18 @@ final class Collection
         return (string) ($this->config['icon'] ?? 'layers');
     }
 
+    public function isForm(): bool
+    {
+        return (bool) ($this->config['is_form'] ?? false);
+    }
+
+    public function adminUrl(): string
+    {
+        return $this->isForm()
+            ? '/admin/forms/' . $this->name
+            : '/admin/collections/' . $this->name;
+    }
+
     /** @return array<string,Field> */
     public function fields(): array
     {

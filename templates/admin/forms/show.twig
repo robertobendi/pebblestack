@@ -1,0 +1,43 @@
+{% extends '@admin/layout.twig' %}
+{% set active = 'collection:' ~ collection.name %}
+{% set title = 'Submission #' ~ submission.id %}
+
+{% block content %}
+    <div class="topbar">
+        <div class="topbar-left">
+            <h1>Submission #{{ submission.id }}</h1>
+            <p><a href="/admin/forms/{{ collection.name }}">← All {{ collection.label()|lower }}</a></p>
+        </div>
+    </div>
+
+    <div class="meta-grid">
+        <div class="card card-pad">
+            <dl style="margin:0;display:grid;gap:1rem;">
+                {% for key, field in collection.fields() %}
+                    <div>
+                        <dt style="font-weight:600;color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;">{{ field.label() }}</dt>
+                        <dd style="margin:.25rem 0 0;white-space:pre-wrap;">{{ submission.field(key, '—') }}</dd>
+                    </div>
+                {% endfor %}
+            </dl>
+        </div>
+
+        <aside class="card meta-card">
+            <div class="card-pad" style="font-size:.875rem;">
+                <div><strong>When:</strong> {{ submission.submittedAt|date('F j, Y H:i') }}</div>
+                {% if submission.userAgent %}
+                    <div style="margin-top:.5rem;"><strong>User agent:</strong>
+                        <span style="color:var(--muted);font-size:.8125rem;">{{ submission.userAgent|slice(0, 80) }}</span>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="card-pad" style="border-top:1px solid var(--border);">
+                <form method="post" action="/admin/forms/{{ collection.name }}/{{ submission.id }}/delete"
+                      onsubmit="return confirm('Delete this submission?');">
+                    {{ csrf_field()|raw }}
+                    <button type="submit" class="btn btn-danger">Delete submission</button>
+                </form>
+            </div>
+        </aside>
+    </div>
+{% endblock %}

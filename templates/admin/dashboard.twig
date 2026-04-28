@@ -14,14 +14,15 @@
     <div class="stat-grid">
         {% for s in stats %}
             <div class="card stat">
-                <div class="stat-label">{{ s.collection.label() }}</div>
+                <div class="stat-label">{{ s.collection.label() }}{% if s.is_form %} <span class="pill pill-draft" style="margin-left:.25rem;">form</span>{% endif %}</div>
                 <div class="stat-value">{{ s.count }}</div>
-                <a class="stat-link" href="/admin/collections/{{ s.collection.name }}">Manage →</a>
+                <a class="stat-link" href="{{ s.collection.adminUrl() }}">Manage →</a>
             </div>
         {% endfor %}
     </div>
 
     {% for s in stats %}
+        {% if not s.is_form %}
         <div class="card">
             <div class="card-head">
                 <h2>Recent {{ s.collection.label()|lower }}</h2>
@@ -56,5 +57,6 @@
                 </table>
             {% endif %}
         </div>
+        {% endif %}
     {% endfor %}
 {% endblock %}

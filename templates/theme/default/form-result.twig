@@ -1,0 +1,17 @@
+{% extends '@theme/layout.twig' %}
+
+{% block title %}{{ ok ? 'Thanks' : 'Try again' }} · {{ site.name }}{% endblock %}
+
+{% block content %}
+<div class="wrap" style="text-align:center;padding:4rem 0;">
+    {% if ok %}
+        <h1>Thanks for getting in touch.</h1>
+        <p class="lede">We received your message.</p>
+    {% else %}
+        <h1>Something went wrong.</h1>
+        <ul style="display:inline-block;text-align:left;">
+            {% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+        <p style="margin-top:2rem;"><a href="javascript:history.back()">← Go back</a></p>
+    {% endif %}
+</div>
+{% endblock %}

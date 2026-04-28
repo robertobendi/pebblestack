@@ -40,4 +40,18 @@ return [
         ],
     ],
 
+    // Example contact form. Mark a collection as 'is_form' => true to turn
+    // it into a public submission endpoint at POST /forms/{name}. The admin
+    // shows received submissions instead of an editor.
+    'contact' => [
+        'label'          => 'Contact',
+        'label_singular' => 'Submission',
+        'is_form'        => true,
+        'fields' => [
+            'name'    => ['type' => 'text', 'required' => true, 'label' => 'Name'],
+            'email'   => ['type' => 'text', 'required' => true, 'label' => 'Email'],
+            'message' => ['type' => 'textarea', 'required' => true, 'label' => 'Message'],
+        ],
+    ],
+
 ];

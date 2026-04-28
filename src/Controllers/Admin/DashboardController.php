@@ -8,6 +8,7 @@ use Pebblestack\Core\App;
 use Pebblestack\Core\Request;
 use Pebblestack\Core\Response;
 use Pebblestack\Services\EntryRepository;
+use Pebblestack\Services\FormSubmissionRepository;
 
 final class DashboardController
 {
@@ -19,13 +20,24 @@ final class DashboardController
             return Response::redirect('/admin/login');
         }
         $repo = new EntryRepository($this->app->db);
+        $forms = new FormSubmissionRepository($this->app->db);
 
         $stats = [];
         foreach ($this->app->collections->list() as $collection) {
+            if ($collection->isForm()) {
+                $stats[] = [
+                    'collection' => $collection,
+                    'count'      => $forms->countByCollection($collection->name),
+                    'recent'     => [],
+                    'is_form'    => true,
+                ];
+                continue;
+            }
             $stats[] = [
                 'collection' => $collection,
                 'count'      => $repo->countByCollection($collection->name),
                 'recent'     => $repo->listByCollection($collection->name, $collection->orderBy(), 5),
+                'is_form'    => false,
             ];
         }
 

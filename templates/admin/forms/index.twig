@@ -1,0 +1,55 @@
+{% extends '@admin/layout.twig' %}
+{% set active = 'collection:' ~ collection.name %}
+{% set title = collection.label() %}
+
+{% block content %}
+    <div class="topbar">
+        <div class="topbar-left">
+            <h1>{{ collection.label() }}</h1>
+            <p>{{ submissions|length }} {{ submissions|length == 1 ? 'submission' : 'submissions' }}</p>
+        </div>
+    </div>
+
+    <div class="card">
+        {% if submissions|length == 0 %}
+            <div class="empty">
+                <h2>No submissions yet.</h2>
+                <p>Submissions will appear here when visitors fill out your form.</p>
+                <p style="margin-top:1rem;color:var(--muted);font-size:.875rem;">
+                    POST your form to <code>/forms/{{ collection.name }}</code> with the field names from your collection config.
+                </p>
+            </div>
+        {% else %}
+            <table class="entries">
+                <thead>
+                    <tr>
+                        {% for key, field in collection.fields() %}
+                            {% if loop.index <= 3 %}<th>{{ field.label() }}</th>{% endif %}
+                        {% endfor %}
+                        <th>When</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in submissions %}
+                        <tr>
+                            {% for key, field in collection.fields() %}
+                                {% if loop.index <= 3 %}
+                                    <td>
+                                        {% if loop.first %}
+                                            <a href="/admin/forms/{{ collection.name }}/{{ s.id }}">
+                                                {{ s.field(key, '—')|slice(0, 60) }}
+                                            </a>
+                                        {% else %}
+                                            {{ s.field(key, '—')|slice(0, 80) }}
+                                        {% endif %}
+                                    </td>
+                                {% endif %}
+                            {% endfor %}
+                            <td class="muted">{{ s.submittedAt|date('M j, Y H:i') }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </div>
+{% endblock %}

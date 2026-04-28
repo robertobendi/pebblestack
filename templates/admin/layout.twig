@@ -227,7 +227,7 @@
             <div class="nav-label">Content</div>
             <nav class="nav">
                 {% for c in collections %}
-                    <a href="/admin/collections/{{ c.name }}"
+                    <a href="{{ c.adminUrl() }}"
                        class="{{ active == 'collection:' ~ c.name ? 'active' : '' }}">{{ c.label() }}</a>
                 {% endfor %}
             </nav>

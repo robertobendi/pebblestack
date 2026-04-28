@@ -9,6 +9,8 @@ use Pebblestack\Controllers\Admin\DashboardController;
 use Pebblestack\Controllers\Admin\EntryController;
 use Pebblestack\Controllers\Admin\MediaController;
 use Pebblestack\Controllers\Admin\SettingsController;
+use Pebblestack\Controllers\Admin\SubmissionController;
+use Pebblestack\Controllers\FormController;
 use Pebblestack\Controllers\InstallController;
 use Pebblestack\Controllers\PublicController;
 use Pebblestack\Controllers\SitemapController;
@@ -110,6 +112,16 @@ final class App
         $r->get('/admin/media/{id}', fn ($req) => $media->edit($req));
         $r->post('/admin/media/{id}', fn ($req) => $media->update($req));
         $r->post('/admin/media/{id}/delete', fn ($req) => $media->destroy($req));
+
+        // Form-collection submissions (admin views).
+        $subs = new SubmissionController($this);
+        $r->get('/admin/forms/{collection}', fn ($req) => $subs->index($req));
+        $r->get('/admin/forms/{collection}/{id}', fn ($req) => $subs->show($req));
+        $r->post('/admin/forms/{collection}/{id}/delete', fn ($req) => $subs->destroy($req));
+
+        // Public form submission endpoint.
+        $form = new FormController($this);
+        $r->post('/forms/{collection}', fn ($req) => $form->submit($req));
 
         $entries = new EntryController($this);
         $r->get('/admin/collections/{collection}', fn ($req) => $entries->index($req));
