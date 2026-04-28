@@ -8,15 +8,18 @@ use Pebblestack\Core\App;
 use Pebblestack\Core\Request;
 use Pebblestack\Core\Response;
 use Pebblestack\Services\EntryRepository;
+use Pebblestack\Services\EntryRevisionRepository;
 use Pebblestack\Services\Field;
 
 final class EntryController
 {
     private EntryRepository $repo;
+    private EntryRevisionRepository $revisions;
 
     public function __construct(private readonly App $app)
     {
         $this->repo = new EntryRepository($app->db);
+        $this->revisions = new EntryRevisionRepository($app->db);
     }
 
     public function index(Request $request): Response
@@ -124,6 +127,8 @@ final class EntryController
             return $this->renderForm($collection, $entry->id, $values, $status, $publishAt, $errors);
         }
 
+        // Snapshot the prior state before overwriting.
+        $this->revisions->snapshot($entry, $this->app->auth->user()?->id);
         $this->repo->update($entry->id, $slug, $status, $values, $publishAt);
         $this->app->session->flash('success', $collection->labelSingular() . ' saved.');
         return Response::redirect('/admin/collections/' . $collection->name . '/' . $entry->id);
@@ -158,6 +163,7 @@ final class EntryController
         ?int $publishAt,
         array $errors,
     ): Response {
+        $revisions = $entryId !== null ? $this->revisions->listForEntry($entryId) : [];
         $body = $this->app->view->render('@admin/entries/form.twig', [
             'collection'   => $collection,
             'entry_id'     => $entryId,
@@ -165,6 +171,7 @@ final class EntryController
             'status'       => $status,
             'publish_at'   => $publishAt,
             'errors'       => $errors,
+            'revisions'    => $revisions,
             'collections'  => $this->app->collections->list(),
             'site_name'    => $this->siteName(),
         ]);

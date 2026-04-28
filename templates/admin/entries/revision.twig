@@ -1,0 +1,40 @@
+{% extends '@admin/layout.twig' %}
+{% set active = 'collection:' ~ collection.name %}
+{% set title = 'Revision · ' ~ entry.field(collection.titleField(), '') %}
+
+{% block content %}
+    <div class="topbar">
+        <div class="topbar-left">
+            <h1>Revision from {{ revision.createdAt|date('F j, Y H:i') }}</h1>
+            <p><a href="/admin/collections/{{ collection.name }}/{{ entry.id }}">← Back to {{ collection.labelSingular()|lower }}</a></p>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-head">
+            <h2>Snapshot</h2>
+            <form method="post" action="/admin/collections/{{ collection.name }}/{{ entry.id }}/revisions/{{ revision.id }}/restore"
+                  onsubmit="return confirm('Restore this revision? The current version will be saved as a new revision first.');">
+                {{ csrf_field()|raw }}
+                <button class="btn btn-primary" type="submit">Restore this revision</button>
+            </form>
+        </div>
+        <div class="card-pad">
+            <dl style="margin:0;display:grid;gap:1.25rem;">
+                <div>
+                    <dt style="font-weight:600;color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;">Status / slug at the time</dt>
+                    <dd style="margin:.25rem 0 0;">
+                        <span class="pill pill-{{ revision.status }}">{{ revision.status }}</span>
+                        <span class="muted" style="margin-left:.5rem;">/{{ revision.slug }}</span>
+                    </dd>
+                </div>
+                {% for key, field in collection.fields() %}
+                    <div>
+                        <dt style="font-weight:600;color:var(--muted);font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;">{{ field.label() }}</dt>
+                        <dd style="margin:.25rem 0 0;white-space:pre-wrap;font-family:{{ field.type() == 'markdown' ? 'ui-monospace, monospace' : 'inherit' }};font-size:{{ field.type() == 'markdown' ? '.8125rem' : '1rem' }};">{{ revision.field(key, '—') }}</dd>
+                    </div>
+                {% endfor %}
+            </dl>
+        </div>
+    </div>
+{% endblock %}

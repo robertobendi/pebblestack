@@ -64,5 +64,34 @@
         <form id="delete-form" method="post" action="/admin/collections/{{ collection.name }}/{{ entry_id }}/delete">
             {{ csrf_field()|raw }}
         </form>
+
+        {% if revisions|length > 0 %}
+            <div class="card" style="margin-top:1.5rem;">
+                <div class="card-head">
+                    <h2>Revision history</h2>
+                    <span class="muted" style="font-size:.875rem;">{{ revisions|length }} prior {{ revisions|length == 1 ? 'version' : 'versions' }}</span>
+                </div>
+                <table class="entries">
+                    <thead>
+                        <tr>
+                            <th>When</th>
+                            <th>Status</th>
+                            <th>Slug</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in revisions %}
+                            <tr>
+                                <td><a href="/admin/collections/{{ collection.name }}/{{ entry_id }}/revisions/{{ r.id }}">{{ r.createdAt|date('M j, Y H:i') }}</a></td>
+                                <td><span class="pill pill-{{ r.status }}">{{ r.status }}</span></td>
+                                <td class="muted">/{{ r.slug }}</td>
+                                <td style="text-align:right;"><a href="/admin/collections/{{ collection.name }}/{{ entry_id }}/revisions/{{ r.id }}">View →</a></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
     {% endif %}
 {% endblock %}

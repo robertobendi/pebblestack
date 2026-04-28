@@ -8,6 +8,7 @@ use Pebblestack\Controllers\Admin\AuthController;
 use Pebblestack\Controllers\Admin\DashboardController;
 use Pebblestack\Controllers\Admin\EntryController;
 use Pebblestack\Controllers\Admin\MediaController;
+use Pebblestack\Controllers\Admin\RevisionController;
 use Pebblestack\Controllers\Admin\SettingsController;
 use Pebblestack\Controllers\Admin\SubmissionController;
 use Pebblestack\Controllers\Admin\UserController;
@@ -138,6 +139,13 @@ final class App
         $r->get('/admin/collections/{collection}', fn ($req) => $entries->index($req));
         $r->get('/admin/collections/{collection}/new', fn ($req) => $entries->create($req));
         $r->post('/admin/collections/{collection}/new', fn ($req) => $entries->store($req));
+
+        // Revisions — registered before the {id} catch-all routes so the
+        // literal "revisions" segment wins.
+        $revs = new RevisionController($this);
+        $r->get('/admin/collections/{collection}/{id}/revisions/{rid}', fn ($req) => $revs->show($req));
+        $r->post('/admin/collections/{collection}/{id}/revisions/{rid}/restore', fn ($req) => $revs->restore($req));
+
         $r->get('/admin/collections/{collection}/{id}', fn ($req) => $entries->edit($req));
         $r->post('/admin/collections/{collection}/{id}', fn ($req) => $entries->update($req));
         $r->post('/admin/collections/{collection}/{id}/delete', fn ($req) => $entries->destroy($req));
