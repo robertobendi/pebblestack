@@ -189,16 +189,30 @@ final class EntryController
     private function collectInput(Request $request, \Pebblestack\Services\Collection $collection): array
     {
         $values = [];
-        $errors = [];
         foreach ($collection->fields() as $key => $field) {
             $raw = $request->post[$key] ?? null;
             // Unchecked checkboxes don't post — treat as false for booleans.
             if ($field->type() === 'boolean' && $raw === null) {
                 $raw = false;
             }
-            $coerced = $field->coerce($raw);
-            $values[$key] = $coerced;
-            $errors = array_merge($errors, $field->validate($coerced));
+            $values[$key] = $field->coerce($raw);
+        }
+
+        // Auto-fill slug from title before validation so a missing slug
+        // is recovered from the title rather than reported as an error.
+        $slugField = $collection->slugField();
+        $titleField = $collection->titleField();
+        if (
+            isset($values[$slugField], $values[$titleField])
+            && $values[$slugField] === ''
+            && (string) $values[$titleField] !== ''
+        ) {
+            $values[$slugField] = Field::slugify((string) $values[$titleField]);
+        }
+
+        $errors = [];
+        foreach ($collection->fields() as $key => $field) {
+            $errors = array_merge($errors, $field->validate($values[$key] ?? null));
         }
         $status = (string) ($request->post['_status'] ?? 'draft');
         if (!in_array($status, ['draft', 'published'], true)) {
