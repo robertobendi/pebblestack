@@ -1,13 +1,21 @@
-/vendor/
-/composer.lock
+# Pebblestack ships vendor/ and composer.lock so the repo is drop-in
+# deployable on shared hosts that don't have Composer installed. Run
+# `composer install --no-dev --optimize-autoloader` to refresh after
+# editing composer.json.
+
+# Per-install state (never commit — different on every site).
 /data/*.sqlite
 /data/*.sqlite-journal
 /data/*.sqlite-wal
 /data/*.sqlite-shm
 /data/installed.lock
+
+# User uploads, but keep the security .htaccess and the keepfile.
 /uploads/*
 !/uploads/.gitkeep
-/cache/
+!/uploads/.htaccess
+
+# Editor / OS clutter.
 .DS_Store
 .idea/
 .vscode/

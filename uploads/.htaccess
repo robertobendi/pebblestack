@@ -1,0 +1,14 @@
+# Uploads must be served, but never executed as PHP. Defense in depth in case
+# someone uploads a polyglot or a future field type allows arbitrary files.
+<FilesMatch "\.(php|phtml|phar|html|htm|js|cgi|pl|py)$">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order deny,allow
+        Deny from all
+    </IfModule>
+</FilesMatch>
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
