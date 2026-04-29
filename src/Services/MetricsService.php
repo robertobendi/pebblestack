@@ -21,6 +21,7 @@ final class MetricsService
         if (!$this->isTrackable($path)) {
             return;
         }
+        $path = self::normalizePath($path);
         $day = $this->today();
         // ON CONFLICT DO UPDATE is supported by SQLite 3.24+. PHP's bundled
         // SQLite is well past that everywhere modern.
@@ -29,6 +30,25 @@ final class MetricsService
              ON CONFLICT(path, day_utc) DO UPDATE SET count = count + 1',
             ['p' => $path, 'd' => $day]
         );
+    }
+
+    /**
+     * Lowercase the path, collapse runs of slashes, and drop the trailing
+     * slash so /Foo, /foo/ and /foo//bar all map to a single canonical row
+     * in pageviews. Without this, topPaths is polluted by stray casing and
+     * duplicate-slash variants.
+     */
+    private static function normalizePath(string $path): string
+    {
+        if ($path === '' || $path === '/') {
+            return '/';
+        }
+        $path = strtolower($path);
+        $path = (string) preg_replace('#/+#', '/', $path);
+        if ($path !== '/' && str_ends_with($path, '/')) {
+            $path = rtrim($path, '/');
+        }
+        return $path;
     }
 
     public function totalViews(int $sinceDays = 30): int

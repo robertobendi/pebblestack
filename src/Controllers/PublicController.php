@@ -21,43 +21,44 @@ final class PublicController
 
     public function home(Request $request): Response
     {
-        $this->track($request);
         // If a Page has slug "home", render it as the homepage. Otherwise
         // fall back to the theme's home.twig with a list of recent posts.
         $home = $this->repo->findBySlug('pages', 'home');
         if ($home !== null && $home->isPublished()) {
-            return $this->renderEntry($home, 'pages');
+            return $this->renderEntry($request, $home, 'pages');
         }
         $recentPosts = $this->repo->listPublished('posts', 'publish_at DESC', 10);
-        $body = $this->app->view->render('@theme/home.twig', $this->context([
+        $lastMod = $this->collectionListLastModified($recentPosts);
+        return $this->cachedHtml($request, $lastMod, fn () => $this->app->view->render('@theme/home.twig', $this->context([
             'recent_posts' => $recentPosts,
-        ]));
-        return Response::html($body);
+        ])));
     }
 
-    public function blogIndex(Request $request): Response
+    public function listCollection(Request $request, string $collectionName): Response
     {
-        $this->track($request);
-        $collection = $this->app->collections->get('posts');
-        if ($collection === null) {
-            return Response::notFound();
+        $collection = $this->app->collections->get($collectionName);
+        if ($collection === null || $collection->isForm() || $collection->listTemplate() === null) {
+            return $this->renderNotFound();
         }
-        $posts = $this->repo->listPublished('posts', $collection->orderBy(), 100);
-        $template = $collection->listTemplate() ?? 'post-list.twig';
+        $entries = $this->repo->listPublished($collectionName, $collection->orderBy(), 100);
+        $template = $collection->listTemplate();
         if (!$this->app->view->exists('@theme/' . $template)) {
-            $template = 'post-list.twig';
+            return $this->renderNotFound();
         }
-        $body = $this->app->view->render('@theme/' . $template, $this->context([
-            'collection' => $collection,
-            'posts'      => $posts,
-        ]));
-        return Response::html($body);
+        return $this->cachedHtml($request, $this->collectionListLastModified($entries), function () use ($template, $collection, $entries) {
+            return $this->app->view->render('@theme/' . $template, $this->context([
+                'collection' => $collection,
+                'entries'    => $entries,
+                // Legacy alias: the shipped post-list.twig still iterates `posts`.
+                'posts'      => $entries,
+            ]));
+        });
     }
 
     public function show(Request $request, string $collectionName): Response
     {
         $collection = $this->app->collections->get($collectionName);
-        if ($collection === null) {
+        if ($collection === null || $collection->isForm()) {
             return $this->renderNotFound();
         }
         $slug = (string) $request->param('slug', '');
@@ -68,8 +69,7 @@ final class PublicController
         if ($entry === null || !$entry->isPublished()) {
             return $this->renderNotFound();
         }
-        $this->track($request);
-        return $this->renderEntry($entry, $collectionName);
+        return $this->renderEntry($request, $entry, $collectionName);
     }
 
     private function track(Request $request): void
@@ -82,18 +82,17 @@ final class PublicController
         }
     }
 
-    private function renderEntry(\Pebblestack\Models\Entry $entry, string $collectionName): Response
+    private function renderEntry(Request $request, \Pebblestack\Models\Entry $entry, string $collectionName): Response
     {
         $collection = $this->app->collections->get($collectionName);
         $template = $collection?->template() ?? 'page.twig';
         if (!$this->app->view->exists('@theme/' . $template)) {
             $template = 'page.twig';
         }
-        $body = $this->app->view->render('@theme/' . $template, $this->context([
+        return $this->cachedHtml($request, $entry->updatedAt, fn () => $this->app->view->render('@theme/' . $template, $this->context([
             'entry'      => $entry,
             'collection' => $collection,
-        ]));
-        return Response::html($body);
+        ])));
     }
 
     private function renderNotFound(): Response
@@ -118,36 +117,7 @@ final class PublicController
                 'name' => $siteName,
                 'url'  => $this->siteUrl(),
             ],
-            'nav' => $this->buildNav(),
         ], $extra);
-    }
-
-    /**
-     * @return list<array{label:string,url:string}>
-     */
-    private function buildNav(): array
-    {
-        $items = [];
-        if ($this->app->collections->has('posts')) {
-            $items[] = ['label' => 'Blog', 'url' => '/blog'];
-        }
-        // Promote up to 5 most recently updated published pages with route /{slug} into nav,
-        // skipping "home" which is the front page.
-        $pages = $this->repo->listPublished('pages', 'updated_at DESC', 20);
-        foreach ($pages as $p) {
-            if ($p->slug === 'home') {
-                continue;
-            }
-            $titleField = $this->app->collections->get('pages')?->titleField() ?? 'title';
-            $items[] = [
-                'label' => (string) $p->field($titleField, ucfirst(str_replace('-', ' ', $p->slug))),
-                'url'   => '/' . $p->slug,
-            ];
-            if (count($items) >= 6) {
-                break;
-            }
-        }
-        return $items;
     }
 
     private function siteUrl(): string
@@ -155,5 +125,48 @@ final class PublicController
         $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
         $host = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
         return $scheme . '://' . $host;
+    }
+
+    /**
+     * Render-or-304. If the client sent If-Modified-Since >= $lastMod, skip
+     * the render and return 304. Otherwise build the body, attach a
+     * Last-Modified header, and let the response stream as usual. The metric
+     * tracking still fires on a 304 so admins see real visitor activity.
+     *
+     * @param \Closure(): string $build
+     */
+    private function cachedHtml(Request $request, ?int $lastMod, \Closure $build): Response
+    {
+        $this->track($request);
+        if ($lastMod !== null) {
+            $ifSince = $request->header('if-modified-since');
+            if ($ifSince !== null) {
+                $clientTs = strtotime($ifSince);
+                if ($clientTs !== false && $clientTs >= $lastMod) {
+                    $resp = (new Response('', 304))
+                        ->setHeader('Last-Modified', gmdate('D, d M Y H:i:s', $lastMod) . ' GMT');
+                    return $resp;
+                }
+            }
+        }
+        $resp = Response::html($build());
+        if ($lastMod !== null) {
+            $resp->setHeader('Last-Modified', gmdate('D, d M Y H:i:s', $lastMod) . ' GMT');
+        }
+        return $resp;
+    }
+
+    /**
+     * @param list<\Pebblestack\Models\Entry> $entries
+     */
+    private function collectionListLastModified(array $entries): ?int
+    {
+        $max = null;
+        foreach ($entries as $e) {
+            if ($max === null || $e->updatedAt > $max) {
+                $max = $e->updatedAt;
+            }
+        }
+        return $max;
     }
 }

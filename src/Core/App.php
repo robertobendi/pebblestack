@@ -18,8 +18,10 @@ use Pebblestack\Controllers\InstallController;
 use Pebblestack\Controllers\PublicController;
 use Pebblestack\Controllers\SitemapController;
 use Pebblestack\Services\CollectionRegistry;
+use Pebblestack\Services\EntryRepository;
 use Pebblestack\Services\Installer;
 use Pebblestack\Services\Migrator;
+use Twig\TwigFunction;
 
 /**
  * Builds the dependency graph and dispatches the request. Single instance
@@ -54,6 +56,7 @@ final class App
             auth: $this->auth,
             session: $this->session,
             debug: (bool) $this->config->get('app.debug', false),
+            cacheDir: $rootDir . '/data/cache/twig',
         );
 
         $this->installer = new Installer($rootDir, $this->db);
@@ -63,12 +66,61 @@ final class App
         $collectionsConfig = is_file($collectionsFile) ? require $collectionsFile : [];
         $this->collections = new CollectionRegistry(is_array($collectionsConfig) ? $collectionsConfig : []);
 
+        $this->view->env()->addFunction(new TwigFunction('nav', fn () => $this->buildNav()));
+
         $this->router = $this->buildRouter();
+    }
+
+    /**
+     * Built lazily by the nav() Twig function so themes that hardcode their
+     * own navigation don't pay the cost of querying pages on every request.
+     *
+     * @return list<array{label:string,url:string}>
+     */
+    private function buildNav(): array
+    {
+        $items = [];
+        if ($this->collections->has('posts')) {
+            $items[] = ['label' => 'Blog', 'url' => '/blog'];
+        }
+        if (!$this->collections->has('pages')) {
+            return $items;
+        }
+        $repo = new EntryRepository($this->db);
+        $pages = $repo->listPublished('pages', 'updated_at DESC', 20);
+        $titleField = $this->collections->get('pages')?->titleField() ?? 'title';
+        foreach ($pages as $p) {
+            if ($p->slug === 'home') {
+                continue;
+            }
+            $items[] = [
+                'label' => (string) $p->field($titleField, ucfirst(str_replace('-', ' ', $p->slug))),
+                'url'   => '/' . $p->slug,
+            ];
+            if (count($items) >= 5) {
+                break;
+            }
+        }
+        return $items;
     }
 
     public function handle(Request $request): Response
     {
         try {
+            // Canonicalize trailing slashes on GET so /blog and /blog/ don't
+            // both render 200 — duplicate URLs hurt SEO and cache hit rate.
+            if ($request->method() === 'GET') {
+                $rawUri = (string) ($request->server['REQUEST_URI'] ?? '/');
+                $rawPath = parse_url($rawUri, PHP_URL_PATH) ?: '/';
+                if ($rawPath !== '/' && str_ends_with($rawPath, '/')) {
+                    $canonical = rtrim($rawPath, '/');
+                    $query = parse_url($rawUri, PHP_URL_QUERY);
+                    if (is_string($query) && $query !== '') {
+                        $canonical .= '?' . $query;
+                    }
+                    return Response::redirect($canonical, 301);
+                }
+            }
             // Until installed, every request goes to the installer.
             if (!$this->installer->isInstalled() && !str_starts_with($request->path(), '/install')) {
                 return Response::redirect('/install');
@@ -80,6 +132,15 @@ final class App
                 (new Migrator($this->db, $this->rootDir . '/data/migrations'))->run();
             }
             return $this->router->dispatch($request);
+        } catch (CsrfException $e) {
+            return Response::html(
+                '<!doctype html><meta charset="utf-8"><title>403 — Session expired</title>' .
+                '<style>body{font:15px system-ui;margin:4rem auto;max-width:480px;padding:0 1rem;color:#1c1917;text-align:center}' .
+                'a{color:#2563eb}</style>' .
+                '<h1>403 — Session expired</h1>' .
+                '<p>Your session expired or the form was opened in another tab. Refresh the page and try again.</p>',
+                403
+            );
         } catch (\Throwable $e) {
             return $this->renderError($e);
         }
@@ -159,14 +220,64 @@ final class App
         $r->get('/sitemap.xml', fn ($req) => $sitemap->sitemap($req));
         $r->get('/robots.txt', fn ($req) => $sitemap->robots($req));
 
-        // Public site (catch-all goes last).
+        // Public site. Routes derive from each collection's `route` config.
+        // Sort by literal-segment depth descending so /{slug} (depth 0) is
+        // registered last and doesn't swallow more specific routes.
         $public = new PublicController($this);
         $r->get('/', fn ($req) => $public->home($req));
-        $r->get('/blog', fn ($req) => $public->blogIndex($req));
-        $r->get('/blog/{slug}', fn ($req) => $public->show($req, 'posts'));
-        $r->get('/{slug}', fn ($req) => $public->show($req, 'pages'));
+
+        $publicCollections = [];
+        foreach ($this->collections->all() as $name => $collection) {
+            if ($collection->isForm()) {
+                continue;
+            }
+            $route = $collection->publicRoute();
+            if ($route === null) {
+                continue;
+            }
+            $publicCollections[] = ['name' => $name, 'collection' => $collection, 'route' => $route];
+        }
+        usort(
+            $publicCollections,
+            fn ($a, $b) => self::routeDepth($b['route']) <=> self::routeDepth($a['route'])
+        );
+
+        foreach ($publicCollections as $pc) {
+            $name = $pc['name'];
+            $route = $pc['route'];
+            $listPath = self::listPathFromRoute($route);
+            if ($listPath !== null && $pc['collection']->listTemplate() !== null) {
+                $r->get($listPath, fn ($req) => $public->listCollection($req, $name));
+            }
+            $r->get($route, fn ($req) => $public->show($req, $name));
+        }
 
         return $r;
+    }
+
+    private static function routeDepth(string $route): int
+    {
+        $literal = 0;
+        foreach (explode('/', trim($route, '/')) as $seg) {
+            if ($seg === '' || str_starts_with($seg, '{')) {
+                continue;
+            }
+            $literal++;
+        }
+        return $literal;
+    }
+
+    private static function listPathFromRoute(string $route): ?string
+    {
+        // Strip the trailing /{placeholder} segment to get the list path.
+        // /blog/{slug}    -> /blog
+        // /projects/{slug} -> /projects
+        // /{slug}         -> null (the catch-all has no usable list path)
+        if (!preg_match('#^(.*)/\{[a-zA-Z_][a-zA-Z0-9_]*\}$#', $route, $m)) {
+            return null;
+        }
+        $prefix = $m[1];
+        return $prefix === '' ? null : $prefix;
     }
 
     private function renderError(\Throwable $e): Response

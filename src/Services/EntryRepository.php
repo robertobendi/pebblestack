@@ -75,8 +75,10 @@ final class EntryRepository
         $orderBy = $this->safeOrderBy($orderBy);
         // Match the title field's value within the JSON. We look for "fieldname":"...query..."
         // which is precise enough to avoid false hits on other fields' values.
-        $needle = '%"' . str_replace(['\\', '"', '%', '_'], ['\\\\', '\\"', '\\%', '\\_'], $titleField) . '":%' .
-                  str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $query) . '%';
+        // The query body is also JSON-quote-escaped so a search for a phrase
+        // containing " matches the actual stored value (json_encode emits \").
+        $needle = '%"' . self::likePatternForJson($titleField) . '":%' .
+                  self::likePatternForJson($query) . '%';
         $rows = $this->db->fetchAll(
             "SELECT * FROM entries
              WHERE collection = :c AND data LIKE :q ESCAPE '\\'
@@ -143,6 +145,25 @@ final class EntryRepository
             );
         }
         return $row !== null;
+    }
+
+    /**
+     * Translate a user search string into a LIKE pattern that matches the
+     * value as it lives inside the JSON-encoded `data` column.
+     *
+     * Two escape passes happen here:
+     *   1. JSON form. json_encode writes " as \" and \ as \\, so the user's
+     *      " has to become \" before matching, and \ has to become \\.
+     *   2. LIKE form. With ESCAPE '\\', every \ in the pattern doubles to \\,
+     *      % becomes \%, _ becomes \_.
+     */
+    private static function likePatternForJson(string $value): string
+    {
+        // Step 1 — JSON-encode just the parts that get escaped: \ and ".
+        $value = str_replace(['\\', '"'], ['\\\\', '\\"'], $value);
+        // Step 2 — LIKE-escape over the result. The doubled backslashes from
+        // step 1 each get doubled again so SQLite treats them as literal \.
+        return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
     }
 
     private function safeOrderBy(string $orderBy): string

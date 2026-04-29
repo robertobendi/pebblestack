@@ -33,10 +33,9 @@ You are not building Pebblestack. You are building **a website that runs on Pebb
 2. **Forms** are collections marked `is_form: true`. They accept public submissions at `POST /forms/{name}` instead of being editable as content.
 3. **The public site** is rendered by Twig templates in the active theme. The router maps:
    - `/` → `home.twig` (or a Page with slug `home` if it exists)
-   - `/blog` → `post-list.twig` with all published posts
-   - `/blog/{slug}` → `post.twig` for one post
-   - `/{slug}` → `page.twig` for one page
-4. Each collection can specify its own `template` and `list_template` keys — that's how you wire a custom collection to its own template file.
+   - Each non-form collection's `route` config (e.g. `/blog/{slug}`, `/projects/{slug}`, `/{slug}`) → its `template`
+   - The path prefix of any collection that also defines a `list_template` (e.g. `/blog` for posts, `/projects` for projects) → that list template
+4. Each collection can specify its own `route`, `template`, and `list_template` keys — that's how you wire a custom collection to its own URL and templates with no `src/` changes.
 
 ## Doing common things
 
@@ -106,6 +105,7 @@ There's no `image` or `relation` field type yet. For images, use a `url` field a
 
 In any template:
 - `{{ entry.field('body')|markdown }}` — render markdown content as HTML.
+- `{{ nav() }}` — list of `{label, url}` items: Blog (if `posts` exists) plus up to 5 most recent published pages. Lazy: themes that hardcode their own nav skip the query entirely.
 - `{{ csrf_field()|raw }}` inside admin forms (already handled in admin templates).
 - `{{ flash('success') }}` for one-shot success messages (admin only).
 - `{{ current_user() }}` for the logged-in user (admin only).

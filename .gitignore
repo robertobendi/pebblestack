@@ -9,6 +9,7 @@
 /data/*.sqlite-wal
 /data/*.sqlite-shm
 /data/installed.lock
+/data/cache/
 
 # User uploads, but keep the security .htaccess and the keepfile.
 /uploads/*

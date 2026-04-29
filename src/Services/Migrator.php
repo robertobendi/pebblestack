@@ -32,14 +32,23 @@ final class Migrator
             if ($sql === false) {
                 throw new \RuntimeException("Could not read migration: {$name}");
             }
-            $this->db->transaction(function (Database $db) use ($sql, $name): void {
+            // INSERT OR IGNORE handles the rare case of two concurrent
+            // first-requests (e.g. two browser tabs hitting a freshly-deployed
+            // shared host at the same time). The second transaction sees the
+            // tables already created and the row already inserted, and no-ops.
+            // We still wrap the whole thing in a transaction so a partial
+            // .sql file rolls back cleanly.
+            $applied = $this->db->transaction(function (Database $db) use ($sql, $name): bool {
                 $db->pdo()->exec($sql);
-                $db->run(
-                    'INSERT INTO schema_migrations (name, applied_at) VALUES (:n, :t)',
+                $stmt = $db->run(
+                    'INSERT OR IGNORE INTO schema_migrations (name, applied_at) VALUES (:n, :t)',
                     ['n' => $name, 't' => time()]
                 );
+                return $stmt->rowCount() > 0;
             });
-            $count++;
+            if ($applied) {
+                $count++;
+            }
         }
         return $count;
     }

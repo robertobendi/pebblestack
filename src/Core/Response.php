@@ -55,6 +55,10 @@ final class Response
                 header($name . ': ' . $value, true);
             }
         }
+        // 1xx/204/304 responses are not allowed to carry a body per RFC 9110.
+        if ($this->status === 204 || $this->status === 304 || ($this->status >= 100 && $this->status < 200)) {
+            return;
+        }
         echo $this->body;
     }
 }

@@ -71,13 +71,19 @@ final class Auth
 
     public function hasMinRole(string $minRole): bool
     {
+        if (!isset(self::ROLE_RANK[$minRole])) {
+            // A typo'd $minRole used to silently deny ($needed defaulted to 99).
+            // That hides the bug — every caller fails closed and the developer
+            // never sees a stack trace. Fail loudly instead so the typo is
+            // caught the first time the guarded route is hit.
+            throw new \InvalidArgumentException("Unknown role: '{$minRole}'. Allowed: " . implode(', ', array_keys(self::ROLE_RANK)));
+        }
         $u = $this->user();
         if ($u === null) {
             return false;
         }
         $userRank = self::ROLE_RANK[$u->role] ?? 0;
-        $needed = self::ROLE_RANK[$minRole] ?? 99;
-        return $userRank >= $needed;
+        return $userRank >= self::ROLE_RANK[$minRole];
     }
 
     /**

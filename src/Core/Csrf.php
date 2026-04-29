@@ -33,7 +33,7 @@ final class Csrf
     {
         $token = (string) ($request->post['_csrf'] ?? $request->header('x-csrf-token') ?? '');
         if (!$this->validate($token)) {
-            throw new \RuntimeException('CSRF token mismatch.');
+            throw new CsrfException('CSRF token mismatch.');
         }
     }
 }

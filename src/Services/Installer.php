@@ -14,14 +14,30 @@ final class Installer
         private readonly Database $db,
     ) {}
 
+    /**
+     * "Installed" means the schema exists AND at least one user has been
+     * created. Querying the users table directly is more reliable than a
+     * sentinel file: if the install transaction commits but a subsequent
+     * filesystem write fails, the next request is still able to log in
+     * rather than looping back through the installer.
+     */
     public function isInstalled(): bool
     {
-        return is_file($this->lockPath());
+        try {
+            if (!$this->db->tableExists('users')) {
+                return false;
+            }
+            $row = $this->db->fetchOne('SELECT 1 AS x FROM users LIMIT 1');
+            return $row !== null;
+        } catch (\Throwable) {
+            return false;
+        }
     }
 
     /**
-     * Run any pending migrations, create the first admin user, store
-     * the site name, and mark the install complete.
+     * Run any pending migrations, create the first admin user, and store
+     * the site name. Once the transaction commits, isInstalled() flips
+     * true automatically — there is no separate sentinel to keep in sync.
      */
     public function install(string $email, string $password, string $name, string $siteName): void
     {
@@ -53,12 +69,5 @@ final class Installer
                 ['v' => (string) $now]
             );
         });
-
-        file_put_contents($this->lockPath(), (string) $now);
-    }
-
-    private function lockPath(): string
-    {
-        return $this->rootDir . '/data/installed.lock';
     }
 }
