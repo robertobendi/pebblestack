@@ -113,4 +113,14 @@ final class Collection
     {
         return (string) ($this->config['order_by'] ?? 'updated_at DESC');
     }
+
+    public function listLimit(): ?int
+    {
+        $v = $this->config['list_limit'] ?? null;
+        if ($v === null) {
+            return null;
+        }
+        $n = (int) $v;
+        return $n > 0 ? $n : null;
+    }
 }

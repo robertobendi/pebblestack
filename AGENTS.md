@@ -57,6 +57,7 @@ Add a collection in `config/collections.php`:
     'template'       => 'project.twig',
     'list_template'  => 'project-list.twig',
     'order_by'       => 'updated_at DESC',
+    'list_limit'     => 100,           // optional; defaults to 100 on the public list page
     'fields' => [
         'title'        => ['type' => 'text', 'required' => true],
         'slug'         => ['type' => 'slug', 'required' => true],

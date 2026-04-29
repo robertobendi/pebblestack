@@ -40,7 +40,7 @@ final class PublicController
         if ($collection === null || $collection->isForm() || $collection->listTemplate() === null) {
             return $this->renderNotFound();
         }
-        $entries = $this->repo->listPublished($collectionName, $collection->orderBy(), 100);
+        $entries = $this->repo->listPublished($collectionName, $collection->orderBy(), $collection->listLimit() ?? 100);
         $template = $collection->listTemplate();
         if (!$this->app->view->exists('@theme/' . $template)) {
             return $this->renderNotFound();
