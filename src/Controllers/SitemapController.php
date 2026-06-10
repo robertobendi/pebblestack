@@ -9,36 +9,46 @@ use Pebblestack\Core\Request;
 use Pebblestack\Core\Response;
 use Pebblestack\Services\EntryRepository;
 
+/**
+ * Sitemap derives from each collection's `route` config — the same source
+ * the router uses — so custom collections and changed routes are always
+ * reflected without touching this file.
+ */
 final class SitemapController
 {
     public function __construct(private readonly App $app) {}
 
     public function sitemap(Request $request): Response
     {
-        $base = $this->siteUrl();
+        $base = $request->baseUrl();
         $repo = new EntryRepository($this->app->db);
 
         $urls = [];
         $urls[] = ['loc' => $base . '/', 'lastmod' => null];
 
-        if ($this->app->collections->has('posts')) {
-            $urls[] = ['loc' => $base . '/blog', 'lastmod' => null];
-            foreach ($repo->listPublished('posts', 'updated_at DESC', 1000) as $post) {
-                $urls[] = [
-                    'loc'     => $base . '/blog/' . rawurlencode($post->slug),
-                    'lastmod' => date('c', $post->updatedAt),
-                ];
+        foreach ($this->app->collections->all() as $name => $collection) {
+            if ($collection->isForm()) {
+                continue;
             }
-        }
-        if ($this->app->collections->has('pages')) {
-            foreach ($repo->listPublished('pages', 'updated_at DESC', 1000) as $page) {
-                if ($page->slug === 'home') {
+            $route = $collection->publicRoute();
+            if ($route === null) {
+                continue;
+            }
+            $listPath = $collection->listPath();
+            if ($listPath !== null && $collection->listTemplate() !== null) {
+                $urls[] = ['loc' => $base . $listPath, 'lastmod' => null];
+            }
+            foreach ($repo->listPublished($name, 'updated_at DESC', 1000) as $entry) {
+                // The "home" page renders at / — already listed above.
+                if ($name === 'pages' && $entry->slug === 'home') {
                     continue;
                 }
-                $urls[] = [
-                    'loc'     => $base . '/' . rawurlencode($page->slug),
-                    'lastmod' => date('c', $page->updatedAt),
-                ];
+                $loc = (string) preg_replace(
+                    '#\{[a-zA-Z_][a-zA-Z0-9_]*\}#',
+                    rawurlencode($entry->slug),
+                    $route
+                );
+                $urls[] = ['loc' => $base . $loc, 'lastmod' => date('c', $entry->updatedAt)];
             }
         }
 
@@ -59,16 +69,9 @@ final class SitemapController
 
     public function robots(Request $request): Response
     {
-        $base = $this->siteUrl();
+        $base = $request->baseUrl();
         $body = "User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /install\n\nSitemap: {$base}/sitemap.xml\n";
         return (new Response($body, 200))
             ->setHeader('Content-Type', 'text/plain; charset=utf-8');
-    }
-
-    private function siteUrl(): string
-    {
-        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
-        return $scheme . '://' . $host;
     }
 }

@@ -109,6 +109,20 @@ final class Collection
         return is_string($r) ? $r : null;
     }
 
+    /**
+     * The public list-page path, derived by stripping the route's trailing
+     * placeholder segment: /blog/{slug} -> /blog. Null when the route is a
+     * root catch-all (/{slug}) or has no placeholder to strip.
+     */
+    public function listPath(): ?string
+    {
+        $route = $this->publicRoute();
+        if ($route === null || !preg_match('#^(.*)/\{[a-zA-Z_][a-zA-Z0-9_]*\}$#', $route, $m)) {
+            return null;
+        }
+        return $m[1] === '' ? null : $m[1];
+    }
+
     public function orderBy(): string
     {
         return (string) ($this->config['order_by'] ?? 'updated_at DESC');

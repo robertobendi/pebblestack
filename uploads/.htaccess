@@ -12,3 +12,13 @@
 <IfModule mod_php.c>
     php_flag engine off
 </IfModule>
+
+# SVGs can carry <script>. Serving them with a no-script CSP turns a
+# malicious upload from stored XSS (running with the site's origin, able to
+# act as a logged-in admin) into an inert image. <img> embeds are unaffected.
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    <FilesMatch "\.svg$">
+        Header set Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'"
+    </FilesMatch>
+</IfModule>

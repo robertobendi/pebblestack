@@ -31,7 +31,18 @@ set_error_handler(function (int $severity, string $message, string $file, int $l
     throw new \ErrorException($message, 0, $severity, $file, $line);
 });
 
-$app = new \Pebblestack\Core\App($root);
-$request = \Pebblestack\Core\Request::fromGlobals();
-$response = $app->handle($request);
+try {
+    $app = new \Pebblestack\Core\App($root);
+    $request = \Pebblestack\Core\Request::fromGlobals();
+    $response = $app->handle($request);
+} catch (\Throwable $e) {
+    // App::handle() catches everything past boot; landing here means the
+    // bootstrap itself failed (broken config file, unreadable data/). Log
+    // the real error, show nothing sensitive.
+    error_log('Pebblestack boot failure: ' . $e);
+    http_response_code(500);
+    header('Content-Type: text/html; charset=utf-8');
+    echo '<!doctype html><meta charset="utf-8"><title>Server error</title><h1>Something went wrong.</h1>';
+    exit;
+}
 $response->send();

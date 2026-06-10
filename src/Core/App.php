@@ -21,6 +21,7 @@ use Pebblestack\Services\CollectionRegistry;
 use Pebblestack\Services\EntryRepository;
 use Pebblestack\Services\Installer;
 use Pebblestack\Services\Migrator;
+use Pebblestack\Services\Settings;
 use Twig\TwigFunction;
 
 /**
@@ -34,6 +35,7 @@ final class App
     public readonly Session $session;
     public readonly Csrf $csrf;
     public readonly Auth $auth;
+    public readonly Settings $settings;
     public readonly View $view;
     public readonly CollectionRegistry $collections;
     public readonly Installer $installer;
@@ -48,10 +50,18 @@ final class App
         $this->session = new Session();
         $this->csrf = new Csrf($this->session);
         $this->auth = new Auth($this->db, $this->session);
+        $this->settings = new Settings($this->db);
+
+        // A typo'd or deleted theme dir should degrade to the default theme,
+        // not take the whole site down with a loader exception.
+        $themePath = $rootDir . '/templates/theme/' . ((string) ($this->config->get('app.theme') ?? 'default'));
+        if (!is_dir($themePath)) {
+            $themePath = $rootDir . '/templates/theme/default';
+        }
 
         $this->view = new View(
             adminPath: $rootDir . '/templates/admin',
-            themePath: $rootDir . '/templates/theme/' . ($this->config->get('app.theme') ?? 'default'),
+            themePath: $themePath,
             csrf: $this->csrf,
             auth: $this->auth,
             session: $this->session,
@@ -106,10 +116,19 @@ final class App
 
     public function handle(Request $request): Response
     {
+        $response = $this->dispatch($request);
+        if ($request->method() === 'HEAD') {
+            $response->setBody('');
+        }
+        return $this->withSecurityHeaders($response);
+    }
+
+    private function dispatch(Request $request): Response
+    {
         try {
             // Canonicalize trailing slashes on GET so /blog and /blog/ don't
             // both render 200 — duplicate URLs hurt SEO and cache hit rate.
-            if ($request->method() === 'GET') {
+            if (in_array($request->method(), ['GET', 'HEAD'], true)) {
                 $rawUri = (string) ($request->server['REQUEST_URI'] ?? '/');
                 $rawPath = parse_url($rawUri, PHP_URL_PATH) ?: '/';
                 if ($rawPath !== '/' && str_ends_with($rawPath, '/')) {
@@ -144,6 +163,18 @@ final class App
         } catch (\Throwable $e) {
             return $this->renderError($e);
         }
+    }
+
+    /**
+     * Baseline security headers, set in PHP so they hold on any server —
+     * .htaccess only covers Apache/LiteSpeed deployments.
+     */
+    private function withSecurityHeaders(Response $response): Response
+    {
+        return $response
+            ->setHeader('X-Content-Type-Options', 'nosniff')
+            ->setHeader('X-Frame-Options', 'SAMEORIGIN')
+            ->setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     }
 
     private function buildRouter(): Router
@@ -245,7 +276,7 @@ final class App
         foreach ($publicCollections as $pc) {
             $name = $pc['name'];
             $route = $pc['route'];
-            $listPath = self::listPathFromRoute($route);
+            $listPath = $pc['collection']->listPath();
             if ($listPath !== null && $pc['collection']->listTemplate() !== null) {
                 $r->get($listPath, fn ($req) => $public->listCollection($req, $name));
             }
@@ -265,19 +296,6 @@ final class App
             $literal++;
         }
         return $literal;
-    }
-
-    private static function listPathFromRoute(string $route): ?string
-    {
-        // Strip the trailing /{placeholder} segment to get the list path.
-        // /blog/{slug}    -> /blog
-        // /projects/{slug} -> /projects
-        // /{slug}         -> null (the catch-all has no usable list path)
-        if (!preg_match('#^(.*)/\{[a-zA-Z_][a-zA-Z0-9_]*\}$#', $route, $m)) {
-            return null;
-        }
-        $prefix = $m[1];
-        return $prefix === '' ? null : $prefix;
     }
 
     private function renderError(\Throwable $e): Response

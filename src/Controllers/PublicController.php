@@ -29,7 +29,7 @@ final class PublicController
         }
         $recentPosts = $this->repo->listPublished('posts', 'publish_at DESC', 10);
         $lastMod = $this->collectionListLastModified($recentPosts);
-        return $this->cachedHtml($request, $lastMod, fn () => $this->app->view->render('@theme/home.twig', $this->context([
+        return $this->cachedHtml($request, $lastMod, fn () => $this->app->view->render('@theme/home.twig', $this->context($request, [
             'recent_posts' => $recentPosts,
         ])));
     }
@@ -38,15 +38,15 @@ final class PublicController
     {
         $collection = $this->app->collections->get($collectionName);
         if ($collection === null || $collection->isForm() || $collection->listTemplate() === null) {
-            return $this->renderNotFound();
+            return $this->renderNotFound($request);
         }
         $entries = $this->repo->listPublished($collectionName, $collection->orderBy(), $collection->listLimit() ?? 100);
         $template = $collection->listTemplate();
         if (!$this->app->view->exists('@theme/' . $template)) {
-            return $this->renderNotFound();
+            return $this->renderNotFound($request);
         }
-        return $this->cachedHtml($request, $this->collectionListLastModified($entries), function () use ($template, $collection, $entries) {
-            return $this->app->view->render('@theme/' . $template, $this->context([
+        return $this->cachedHtml($request, $this->collectionListLastModified($entries), function () use ($request, $template, $collection, $entries) {
+            return $this->app->view->render('@theme/' . $template, $this->context($request, [
                 'collection' => $collection,
                 'entries'    => $entries,
                 // Legacy alias: the shipped post-list.twig still iterates `posts`.
@@ -59,15 +59,15 @@ final class PublicController
     {
         $collection = $this->app->collections->get($collectionName);
         if ($collection === null || $collection->isForm()) {
-            return $this->renderNotFound();
+            return $this->renderNotFound($request);
         }
         $slug = (string) $request->param('slug', '');
         if ($slug === '') {
-            return $this->renderNotFound();
+            return $this->renderNotFound($request);
         }
         $entry = $this->repo->findBySlug($collectionName, $slug);
         if ($entry === null || !$entry->isPublished()) {
-            return $this->renderNotFound();
+            return $this->renderNotFound($request);
         }
         return $this->renderEntry($request, $entry, $collectionName);
     }
@@ -89,16 +89,16 @@ final class PublicController
         if (!$this->app->view->exists('@theme/' . $template)) {
             $template = 'page.twig';
         }
-        return $this->cachedHtml($request, $entry->updatedAt, fn () => $this->app->view->render('@theme/' . $template, $this->context([
+        return $this->cachedHtml($request, $entry->updatedAt, fn () => $this->app->view->render('@theme/' . $template, $this->context($request, [
             'entry'      => $entry,
             'collection' => $collection,
         ])));
     }
 
-    private function renderNotFound(): Response
+    private function renderNotFound(Request $request): Response
     {
         if ($this->app->view->exists('@theme/404.twig')) {
-            $body = $this->app->view->render('@theme/404.twig', $this->context([]));
+            $body = $this->app->view->render('@theme/404.twig', $this->context($request, []));
             return Response::html($body, 404);
         }
         return Response::notFound();
@@ -108,23 +108,14 @@ final class PublicController
      * @param array<string,mixed> $extra
      * @return array<string,mixed>
      */
-    private function context(array $extra): array
+    private function context(Request $request, array $extra): array
     {
-        $row = $this->app->db->fetchOne("SELECT value FROM settings WHERE key = 'site_name'");
-        $siteName = $row !== null ? (string) $row['value'] : 'Pebblestack';
-        return array_merge([
+        return [
             'site' => [
-                'name' => $siteName,
-                'url'  => $this->siteUrl(),
+                'name' => $this->app->settings->siteName(),
+                'url'  => $request->baseUrl(),
             ],
-        ], $extra);
-    }
-
-    private function siteUrl(): string
-    {
-        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
-        return $scheme . '://' . $host;
+        ] + $extra;
     }
 
     /**

@@ -24,6 +24,7 @@ WordPress runs on every cheap shared host on the planet, but it brings 20 years 
 - **Auto-escaped templates.** Twig means you don't ship XSS by accident.
 - **Built-in media library** with MIME-sniffed uploads + alt text + markdown snippets.
 - **Roles + multi-user** — admin/editor/viewer with sane gating.
+- **Hardened login** — per-IP rate limiting on failed attempts (stored as salted hashes, never raw IPs).
 - **Forms** — mark a collection `is_form: true` and it accepts public submissions at `POST /forms/{name}`.
 - **Revisions + restore** — every save snapshots the prior version.
 - **Privacy-friendly metrics** — server-side page views, no JS pixel, no cookies, no IPs.

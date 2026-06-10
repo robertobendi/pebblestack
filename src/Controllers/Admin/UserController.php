@@ -8,32 +8,36 @@ use Pebblestack\Core\App;
 use Pebblestack\Core\Auth;
 use Pebblestack\Core\Request;
 use Pebblestack\Core\Response;
+use Pebblestack\Models\User;
 use Pebblestack\Services\UserRepository;
 
-final class UserController
+final class UserController extends AdminController
 {
     private UserRepository $repo;
 
-    public function __construct(private readonly App $app)
+    public function __construct(App $app)
     {
+        parent::__construct($app);
         $this->repo = new UserRepository($app->db);
     }
 
     public function index(Request $request): Response
     {
-        if ($block = $this->app->auth->guard('admin')) return $block;
-        return $this->renderIndex();
+        if ($block = $this->guard($request, 'admin', 'admin')) return $block;
+        return $this->render('@admin/users/index.twig', [
+            'users' => $this->repo->listAll(),
+        ]);
     }
 
     public function create(Request $request): Response
     {
-        if ($block = $this->app->auth->guard('admin')) return $block;
+        if ($block = $this->guard($request, 'admin', 'admin')) return $block;
         return $this->renderForm(null, ['name' => '', 'email' => '', 'role' => 'editor'], []);
     }
 
     public function store(Request $request): Response
     {
-        if ($block = $this->app->auth->guard('admin')) return $block;
+        if ($block = $this->guard($request, 'admin', 'admin')) return $block;
         $this->app->csrf->check($request);
 
         $name = trim((string) $request->input('name', ''));
@@ -59,7 +63,7 @@ final class UserController
 
     public function edit(Request $request): Response
     {
-        if ($block = $this->app->auth->guard('admin')) return $block;
+        if ($block = $this->guard($request, 'admin', 'admin')) return $block;
         $user = $this->repo->find((int) $request->param('id'));
         if ($user === null) {
             return Response::notFound('User not found');
@@ -69,7 +73,7 @@ final class UserController
 
     public function update(Request $request): Response
     {
-        if ($block = $this->app->auth->guard('admin')) return $block;
+        if ($block = $this->guard($request, 'admin', 'admin')) return $block;
         $this->app->csrf->check($request);
         $user = $this->repo->find((int) $request->param('id'));
         if ($user === null) {
@@ -105,7 +109,7 @@ final class UserController
 
     public function resetPassword(Request $request): Response
     {
-        if ($block = $this->app->auth->guard('admin')) return $block;
+        if ($block = $this->guard($request, 'admin', 'admin')) return $block;
         $this->app->csrf->check($request);
         $user = $this->repo->find((int) $request->param('id'));
         if ($user === null) {
@@ -126,7 +130,7 @@ final class UserController
 
     public function destroy(Request $request): Response
     {
-        if ($block = $this->app->auth->guard('admin')) return $block;
+        if ($block = $this->guard($request, 'admin', 'admin')) return $block;
         $this->app->csrf->check($request);
         $user = $this->repo->find((int) $request->param('id'));
         if ($user === null) {
@@ -162,35 +166,16 @@ final class UserController
         return $errors;
     }
 
-    private function renderIndex(): Response
-    {
-        $body = $this->app->view->render('@admin/users/index.twig', [
-            'users'       => $this->repo->listAll(),
-            'collections' => $this->app->collections->list(),
-            'site_name'   => $this->siteName(),
-        ]);
-        return Response::html($body);
-    }
-
     /**
      * @param array{name:string,email:string,role:string} $values
      * @param list<string> $errors
      */
-    private function renderForm(?\Pebblestack\Models\User $user, array $values, array $errors): Response
+    private function renderForm(?User $user, array $values, array $errors): Response
     {
-        $body = $this->app->view->render('@admin/users/form.twig', [
-            'user_obj'    => $user,
-            'values'      => $values,
-            'errors'      => $errors,
-            'collections' => $this->app->collections->list(),
-            'site_name'   => $this->siteName(),
-        ]);
-        return Response::html($body, $errors === [] ? 200 : 422);
-    }
-
-    private function siteName(): string
-    {
-        $row = $this->app->db->fetchOne("SELECT value FROM settings WHERE key = 'site_name'");
-        return $row !== null ? (string) $row['value'] : 'Pebblestack';
+        return $this->render('@admin/users/form.twig', [
+            'user_obj' => $user,
+            'values'   => $values,
+            'errors'   => $errors,
+        ], $errors === [] ? 200 : 422);
     }
 }

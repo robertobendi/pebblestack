@@ -4,19 +4,16 @@ declare(strict_types=1);
 
 namespace Pebblestack\Controllers\Admin;
 
-use Pebblestack\Core\App;
 use Pebblestack\Core\Request;
 use Pebblestack\Core\Response;
 use Pebblestack\Services\EntryRepository;
 use Pebblestack\Services\FormSubmissionRepository;
 
-final class DashboardController
+final class DashboardController extends AdminController
 {
-    public function __construct(private readonly App $app) {}
-
     public function index(Request $request): Response
     {
-        if ($block = $this->app->auth->guard('viewer')) return $block;
+        if ($block = $this->guard($request)) return $block;
         $repo = new EntryRepository($this->app->db);
         $forms = new FormSubmissionRepository($this->app->db);
 
@@ -39,17 +36,6 @@ final class DashboardController
             ];
         }
 
-        $body = $this->app->view->render('@admin/dashboard.twig', [
-            'stats'       => $stats,
-            'collections' => $this->app->collections->list(),
-            'site_name'   => $this->siteName(),
-        ]);
-        return Response::html($body);
-    }
-
-    private function siteName(): string
-    {
-        $row = $this->app->db->fetchOne("SELECT value FROM settings WHERE key = 'site_name'");
-        return $row !== null ? (string) $row['value'] : 'Pebblestack';
+        return $this->render('@admin/dashboard.twig', ['stats' => $stats]);
     }
 }

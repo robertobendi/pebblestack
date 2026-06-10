@@ -30,6 +30,9 @@ final class Auth
             ['e' => strtolower(trim($email))]
         );
         if ($row === null) {
+            // Burn the same time as a real verify so response timing doesn't
+            // reveal whether the email exists.
+            password_verify($password, '$2y$12$TUylchuOoLsdiYqNXZFE8uzM0lHImN/U/oUEp2YKDs5Uou00BwBUK');
             return null;
         }
         if (!password_verify($password, (string) $row['password_hash'])) {

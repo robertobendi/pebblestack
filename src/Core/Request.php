@@ -30,14 +30,7 @@ final class Request
 
     public function method(): string
     {
-        $method = strtoupper((string) ($this->server['REQUEST_METHOD'] ?? 'GET'));
-        if ($method === 'POST' && isset($this->post['_method'])) {
-            $override = strtoupper((string) $this->post['_method']);
-            if (in_array($override, ['PUT', 'PATCH', 'DELETE'], true)) {
-                return $override;
-            }
-        }
-        return $method;
+        return strtoupper((string) ($this->server['REQUEST_METHOD'] ?? 'GET'));
     }
 
     public function path(): string
@@ -70,5 +63,28 @@ final class Request
         $key = 'HTTP_' . strtoupper(str_replace('-', '_', $name));
         $val = $this->server[$key] ?? null;
         return $val === null ? null : (string) $val;
+    }
+
+    public function isSecure(): bool
+    {
+        return (!empty($this->server['HTTPS']) && $this->server['HTTPS'] !== 'off')
+            || (($this->server['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    }
+
+    /**
+     * Scheme + host of the current request, e.g. "https://example.com".
+     * Honors X-Forwarded-Proto so absolute URLs (sitemap, canonical) stay
+     * https behind Cloudflare or a host's TLS-terminating proxy.
+     */
+    public function baseUrl(): string
+    {
+        $host = (string) ($this->server['HTTP_HOST'] ?? 'localhost');
+        return ($this->isSecure() ? 'https' : 'http') . '://' . $host;
+    }
+
+    public function clientIp(): ?string
+    {
+        $ip = (string) ($this->server['REMOTE_ADDR'] ?? '');
+        return $ip === '' ? null : $ip;
     }
 }

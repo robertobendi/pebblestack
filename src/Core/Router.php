@@ -54,6 +54,10 @@ final class Router
     public function dispatch(Request $request): Response
     {
         $method = $request->method();
+        // HEAD is GET without a body; the body is stripped at send time.
+        if ($method === 'HEAD') {
+            $method = 'GET';
+        }
         $path = $request->path();
         foreach ($this->routes as $route) {
             if ($route['method'] !== '*' && $route['method'] !== $method) {

@@ -97,6 +97,11 @@ final class InstallController
             'ok'     => extension_loaded('mbstring'),
             'detail' => extension_loaded('mbstring') ? 'Loaded' : 'Missing — enable mbstring in PHP.',
         ];
+        $checks[] = [
+            'label'  => 'fileinfo extension',
+            'ok'     => extension_loaded('fileinfo'),
+            'detail' => extension_loaded('fileinfo') ? 'Loaded' : 'Missing — needed to verify media uploads.',
+        ];
         $dataDir = $this->app->rootDir . '/data';
         $checks[] = [
             'label'  => 'data/ writable',

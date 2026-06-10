@@ -24,7 +24,7 @@ final class FormController
         }
 
         $repo = new FormSubmissionRepository($this->app->db);
-        $ipHash = $this->ipHash($request);
+        $ipHash = $this->app->settings->ipHash($request->clientIp());
 
         // Lightweight per-IP rate limit.
         if ($ipHash !== null && $repo->recentCountForIp($ipHash, 3600) >= self::RATE_LIMIT_PER_HOUR) {
@@ -75,7 +75,7 @@ final class FormController
             return (new Response($body !== false ? $body : '{}', $status))
                 ->setHeader('Content-Type', 'application/json; charset=utf-8');
         }
-        $body = $this->app->view->render('@theme/form-result.twig', $this->context([
+        $body = $this->app->view->render('@theme/form-result.twig', $this->context($request, [
             'collection' => $collection,
             'ok'         => false,
             'errors'     => $errors,
@@ -91,7 +91,7 @@ final class FormController
             return (new Response($body !== false ? $body : '{}', 200))
                 ->setHeader('Content-Type', 'application/json; charset=utf-8');
         }
-        $body = $this->app->view->render('@theme/form-result.twig', $this->context([
+        $body = $this->app->view->render('@theme/form-result.twig', $this->context($request, [
             'collection' => $collection,
             'ok'         => true,
             'errors'     => [],
@@ -106,28 +106,17 @@ final class FormController
         return str_contains($accept, 'application/json') && !str_contains($accept, 'text/html');
     }
 
-    private function ipHash(Request $request): ?string
-    {
-        $ip = (string) ($request->server['REMOTE_ADDR'] ?? '');
-        if ($ip === '') {
-            return null;
-        }
-        // Hash with a per-install salt so the same IP isn't directly recoverable.
-        $salt = (string) ($this->app->db->fetchOne("SELECT value FROM settings WHERE key = 'installed_at'")['value'] ?? 'pebblestack');
-        return hash('sha256', $ip . '|' . $salt);
-    }
-
     /**
      * @param array<string,mixed> $extra
      * @return array<string,mixed>
      */
-    private function context(array $extra): array
+    private function context(Request $request, array $extra): array
     {
-        $row = $this->app->db->fetchOne("SELECT value FROM settings WHERE key = 'site_name'");
-        $siteName = $row !== null ? (string) $row['value'] : 'Pebblestack';
-        return array_merge([
-            'site' => ['name' => $siteName, 'url' => ''],
-            'nav'  => [],
-        ], $extra);
+        return [
+            'site' => [
+                'name' => $this->app->settings->siteName(),
+                'url'  => $request->baseUrl(),
+            ],
+        ] + $extra;
     }
 }
